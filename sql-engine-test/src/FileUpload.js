@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import axios from "axios";
+import "./App.css";
 
 const FileUpload = () => {
   const [file, setFile] = useState(null);
@@ -21,7 +22,7 @@ const FileUpload = () => {
 
     try {
       const response = await axios.post(
-        "http://127.0.0.1:5000/upload",
+        "http://127.0.0.1:5000/upload", // make sure to change the url to .env
         formData,
         {
           headers: {
@@ -37,13 +38,13 @@ const FileUpload = () => {
   };
 
   return (
-    <div>
-      <h2>Upload XLSX File</h2>
+    <div className="file-upload-container">
+      <h2>Upload File</h2>
       <form onSubmit={handleSubmit}>
-        <input type="file" accept=".xlsx" onChange={handleFileChange} />
+        <input type="file" accept=".csv,.xlsx" onChange={handleFileChange} />
         <button type="submit">Upload</button>
       </form>
-      {message && <p>{message}</p>}
+      {message && <p className="message">{message}</p>}
     </div>
   );
 };
