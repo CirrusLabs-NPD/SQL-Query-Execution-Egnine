@@ -77,10 +77,20 @@ def upload_file():
         try:
             df = pd.read_excel(file_path)
             # Do something with the dataframe (e.g., print or process)
-            print(df.head())
             return jsonify({"message": "File uploaded and processed successfully"}), 200
         except Exception as e:
             return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
+
+
+
+### start with the SQL queries 
+
+# server_name = 
+# server_id = 
+
+
+# df["query_1"]
+# df["query_2"]
