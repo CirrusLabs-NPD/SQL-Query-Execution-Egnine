@@ -5,6 +5,7 @@ import os
 import snowflake.connector 
 from dotenv import load_dotenv
 
+from flask_cors import CORS , cross_origin  # Import CORS
 ### dotenv imports ### 
 
 your_account_identifier = os.getenv('your_account_identifier')
@@ -55,15 +56,26 @@ def connect_to_db():
     conn = psycopg2.connect(**db_config)
     return conn
 
+# conn = connect_to_db
+# cur = conn.cursor()
+
+# cur.close()
+# conn.close()
 ### Flask portion ###
 
 app = Flask(__name__)
+CORS(app)
+allowed_origins = [
+    "http://localhost:3000",  # Replace with the actual domains you want to allow
+]
+CORS(app, origins=allowed_origins, methods=["GET", "POST", "PUT", "DELETE"], allow_headers=["Authorization"], supports_credentials=True)
 
 UPLOAD_FOLDER = 'uploads'
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 
 @app.route('/upload', methods=['POST'])
+@cross_origin()
 def upload_file():
     if 'file' not in request.files:
         return jsonify({"error": "No file part"}), 400
