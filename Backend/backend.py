@@ -1,11 +1,11 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_file
 import pandas as pd
 import psycopg2
 import os
 import snowflake.connector 
 from dotenv import load_dotenv
-
 from flask_cors import CORS , cross_origin  # Import CORS
+
 ### dotenv imports ### 
 
 your_account_identifier = os.getenv('your_account_identifier')
@@ -92,6 +92,25 @@ def upload_file():
             return jsonify({"message": "File uploaded and processed successfully"}), 200
         except Exception as e:
             return jsonify({"error": str(e)}), 500
+
+
+"""
+@app.route('/download', methods=['GET'])
+@cross_origin()
+def download_excel():
+
+    data = {'Name': ['Alice', 'Bob', 'Charlie'],
+            'Age': [25, 30, 35]}
+    df = pd.DataFrame(data)
+
+    # Save the DataFrame to an Excel file
+    excel_path = os.path.join(UPLOAD_FOLDER, 'data.xlsx')
+    df.to_excel(excel_path, index=False)
+
+    # Send the Excel file to the client for download
+    return send_file(excel_path, as_attachment=True)
+
+"""
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
