@@ -1,0 +1,23 @@
+:root {
+  --Cl-blue: #0e3374;
+}
+
+.custom-file-upload {
+  display: inline-block;
+  padding: 10px 20px;
+  cursor: pointer;
+  border-radius: 8px;
+  background-color: rgb(66, 133, 244);
+  color: white;
+  font-size: 16px;
+  text-align: center;
+  transition: background-color 0.3s ease, border 0.3s ease;
+}
+
+.custom-file-upload input[type="file"] {
+  display: none;
+}
+
+.custom-file-upload:hover {
+  background-color: var(--Cl-blue);
+}
