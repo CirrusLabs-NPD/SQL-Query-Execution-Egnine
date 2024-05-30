@@ -88,8 +88,11 @@ def upload_file():
         # Process the file using pandas
         try:
             df = pd.read_excel(file_path)
+            df_f10 = df.head(10)
+            df_json = df_f10.to_json(orient="records")
             # Do something with the dataframe (e.g., print or process)
-            return jsonify({"message": "File uploaded and processed successfully"}), 200
+            return jsonify({"message": "File uploaded and processed successfully",
+                            "data": df_json}), 200
         except Exception as e:
             return jsonify({"error": str(e)}), 500
 
