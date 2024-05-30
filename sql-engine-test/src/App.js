@@ -10,6 +10,11 @@ import logo from "./logo.png";
 
 function App() {
   const { data } = useForm();
+  const today = new Date();
+  const month = today.getMonth() + 1;
+  const day = today.getDate();
+  const year = today.getFullYear();
+  const currentDate = day + "/" + month + "/" + year;
 
   const renderLogo = () => (
     <div>
@@ -28,7 +33,7 @@ function App() {
 
         <div className="public-layout-logo-text ml-2 text-white">
           <div className="public-layout-logo-prefix">
-            <b style={{ fontWeight: "600" }}>SQL </b>Query Execution Engine
+            <b style={{ fontWeight: "600" }}>SQL </b> Execution Engine
           </div>
           <div className="public-layout-logo-suffix"></div>
         </div>
@@ -52,7 +57,7 @@ function App() {
           <div className="flex flex-col">
             <span className="text-slate-200 text-xs">STEP 1</span>
             <span className="font-medium text-sm text-slate-50">
-              Select File
+              SQL Upload
             </span>
           </div>
         </div>
@@ -67,7 +72,7 @@ function App() {
           <div className="flex flex-col">
             <span className="text-slate-200 text-xs">STEP 2</span>
             <span className="font-medium text-sm text-slate-50">
-              Direct Execution
+              SQL Execution
             </span>
           </div>
         </div>
@@ -82,7 +87,7 @@ function App() {
           <div className="flex flex-col">
             <span className="text-slate-200 text-xs">STEP 3</span>
             <span className="font-medium text-sm text-slate-50">
-              Receive report
+              Report View
             </span>
           </div>
         </div>
