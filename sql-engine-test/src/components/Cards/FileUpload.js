@@ -11,7 +11,6 @@ export const FileUpload = () => {
   const [file, setFile] = useState(null);
   const [message, setMessage] = useState("");
   const [option, setOption] = useState("");
-  const [username, setUsername] = useState("test-username: Raghav");
   const [data, setData] = useState([]);
 
   const today = new Date();
@@ -26,20 +25,15 @@ export const FileUpload = () => {
     setFileName(selectedFile ? selectedFile.name : "Choose File");
   };
 
-  const handleOptionChange = (e) => {
-    setOption(e.target.value);
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!file || !option) {
+    if (!file) {
       setMessage("Please select a file and an option");
       return;
     }
 
     const formData = new FormData();
     formData.append("file", file);
-    //formData.append("option", option);
 
     try {
       const response = await axios.post(
@@ -61,10 +55,9 @@ export const FileUpload = () => {
   };
 
   return (
-    <div>
-      <div className="bg-[#0e3374] h-fit w-fit ml-auto text-white border-8 border-[#0e3374] rounded-xl">
-        <p>Username: {username}</p>
-        <p>Date: {currentDate}</p>
+    <div className="flex-center bg-white rounded p-10 h-fit">
+      <div className="font-medium text-3xl mb-2 text-[#0e3374] text-center">
+        SQL Execution engine
       </div>
       <Header
         head="Select File"
@@ -87,26 +80,16 @@ export const FileUpload = () => {
             />
             {fileName}
           </label>
-          <div>
-            <select value={option} onChange={handleOptionChange}>
-              <option value="" disabled>
-                Select a Database
-              </option>
-              <option value="1">Snowflake</option>
-              <option value="0">Other</option>
-            </select>
-          </div>
-
           <button
-            className="py-3 float-right mt-[5%] ml-auto hover:bg-blue-900 bg-blue-950 text-sm text-white w-[110px] rounded-lg"
+            className="py-3 float-right mt-[5%] ml-auto hover:bg-red-500 bg-[#d5292a] text-sm text-white w-[110px] rounded-lg"
             type="submit"
           >
-            Next Step
+            Upload
           </button>
         </form>
         {message && <p className="message">{message}</p>}
         {data.length > 0 && (
-          <div className="flex overflow-auto h-52 border-2 rounded-lg border-blue-950">
+          <div className="flex overflow-auto h-52 border-2 rounded-lg border-[#e0def7]">
             <table>
               <thead>
                 <tr>

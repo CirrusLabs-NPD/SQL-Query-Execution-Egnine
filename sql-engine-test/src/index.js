@@ -4,6 +4,7 @@ import { FormContextProvider } from "./context/FormContext";
 import "./index.css";
 import App from "./App";
 import reportWebVitals from "./reportWebVitals";
+import MaterialTable from "material-table";
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(
