@@ -4,109 +4,127 @@ import {
   EpicGeneration,
   UserStoryGen,
 } from "./components";
+import React, { useEffect, useState } from "react";
 import { useForm } from "./context/FormContext";
 import "./App.css";
 import logo from "./logo.png";
+import MaterialTable from "material-table";
 
 function App() {
-  const { data } = useForm();
+  const [username, setUsername] = useState("test-username: Raghav");
+  const { data, updateDisplay } = useForm();
   const today = new Date();
-  const month = today.getMonth() + 1;
-  const day = today.getDate();
+  const months = [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+  ];
+  const m = today.getMonth();
+  let month = months[m];
+  const date = today.getDate();
+  const days = [
+    "Sunday",
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Saturday",
+  ];
+  let day = days[today.getDay()];
   const year = today.getFullYear();
-  const currentDate = day + "/" + month + "/" + year;
+  const hour = today.getHours();
+  const minute = today.getMinutes();
+  const currentDate =
+    day +
+    ", " +
+    month +
+    " " +
+    date +
+    ", " +
+    year +
+    "      " +
+    hour +
+    ":" +
+    minute;
 
-  const renderLogo = () => (
-    <div>
-      <div className="flex items-center">
-        <img
-          className="logo-icon"
-          style={{
-            height: "56%",
-            width: "30%",
-            backgroundColor: "white",
-            borderRadius: "12px",
-          }}
-          src={logo}
-          alt="Your Logo"
-        />
+  const handleClickToPage1 = () => {
+    updateDisplay(0);
+  };
 
-        <div className="public-layout-logo-text ml-2 text-white">
-          <div className="public-layout-logo-prefix">
-            <b style={{ fontWeight: "600" }}>SQL </b> Execution Engine
-          </div>
-          <div className="public-layout-logo-suffix"></div>
-        </div>
-      </div>
-    </div>
-  );
+  const handleClickToPage2 = () => {
+    updateDisplay(1);
+  };
+
+  const handleClickToPage3 = () => {
+    updateDisplay(2);
+  };
 
   return (
-    <section className="bg-white p-5 flex rounded-[2.5%]">
-      <div className="bg-[url(./assets/bg-sidebar-desktop.svg)] px-8 py-10 w-[28%] bg-no-repeat bg-contain">
-        <div className="flex gap-3 mb-8">{renderLogo()}</div>
-
-        <div className="flex gap-3 mb-8">
-          <div
-            className={`rounded-full ${
-              data.display === 0 ? "bg-sky-200 text-slate-900" : ""
-            } text-sky-200 hover:text-slate-900 border-2 border-sky-200 flex items-center justify-center hover:bg-sky-200 w-[35px] h-[35px]`}
-          >
-            <span>1</span>
-          </div>
-          <div className="flex flex-col">
-            <span className="text-slate-200 text-xs">STEP 1</span>
-            <span className="font-medium text-sm text-slate-50">
-              SQL Upload
-            </span>
-          </div>
+    <div className="font-sans">
+      <div className="flex flex-row basis-full bg-[#f9f9f9] h-14 p-2 items-center justify-between">
+        <img className="px-10" src={logo}></img>
+        <div className="flex flex-rows gap-5 mb-1 whitespace-pre ps-32">
+          {currentDate}
         </div>
-        <div className="flex gap-3 mb-8">
-          <div
-            className={`rounded-full ${
-              data.display === 1 ? "bg-sky-200 text-slate-900" : ""
-            } text-sky-200 hover:text-slate-900 border-2 border-sky-200 flex items-center justify-center hover:bg-sky-200 w-[35px] h-[35px]`}
-          >
-            <span>2</span>
-          </div>
-          <div className="flex flex-col">
-            <span className="text-slate-200 text-xs">STEP 2</span>
-            <span className="font-medium text-sm text-slate-50">
-              SQL Execution
-            </span>
-          </div>
-        </div>
-        <div className="flex gap-3 mb-8">
-          <div
-            className={`rounded-full ${
-              data.display === 2 ? "bg-sky-200 text-slate-900" : ""
-            } text-sky-200 hover:text-slate-900 border-2 border-sky-200 flex items-center justify-center hover:bg-sky-200 w-[35px] h-[35px]`}
-          >
-            <span>3</span>
-          </div>
-          <div className="flex flex-col">
-            <span className="text-slate-200 text-xs">STEP 3</span>
-            <span className="font-medium text-sm text-slate-50">
-              Report View
-            </span>
-          </div>
-        </div>
+        <div className="flex self-center px-10 ">{username}</div>
       </div>
+      <section className="flex">
+        <div className="bg-white w-64 p-5 pt-14">
+          <div className="flex gap-1 mb-1">
+            <div
+              onClick={handleClickToPage1}
+              className={`flex flex-col ${
+                data.display === 0 ? "bg-neutral-200 text-[#0e3374]" : ""
+              } hover:bg-neutral-200 hover:text-[#0e3374] flex p-2 justify-center w-full h-[35px] rounded cursor-pointer`}
+            >
+              <span className="font-medium text-sm">SQL Upload</span>
+            </div>
+          </div>
+          <div className="flex gap-1 mb-1">
+            <div
+              onClick={handleClickToPage2}
+              className={`flex flex-col ${
+                data.display === 1 ? "bg-neutral-200 text-[#0e3374]" : ""
+              } hover:bg-neutral-200 hover:text-[#0e3374] flex p-2 justify-center w-full h-[35px] rounded cursor-pointer`}
+            >
+              <span className="font-medium text-sm">SQL Execution</span>
+            </div>
+          </div>
+          <div className="flex gap-1 mb-1">
+            <div
+              onClick={handleClickToPage3}
+              className={`flex flex-col ${
+                data.display === 2 ? "bg-neutral-200 text-[#0e3374]" : ""
+              } hover:bg-neutral-200 hover:text-[#0e3374] flex p-2 justify-center w-full h-[35px] rounded cursor-pointer`}
+            >
+              <span className="font-medium text-sm">Report</span>
+            </div>
+          </div>
+        </div>
 
-      <div className="pl-[13%] pr-[4%] pt-[5%] w-[68%]">
-        {data.display === 0 ? (
-          <FileUpload />
-        ) : data.display === 1 ? (
-          <QueryAns />
-        ) : data.display === 2 ? (
-          <EpicGeneration />
-        ) : data.display === 3 ? (
-          <UserStoryGen />
-        ) : (
-          ""
-        )}
-      </div>
-    </section>
+        <div className="pl-[13%] pr-[4%] pt-[5%] w-[68%]">
+          {data.display === 0 ? (
+            <FileUpload></FileUpload>
+          ) : data.display === 1 ? (
+            <QueryAns />
+          ) : data.display === 2 ? (
+            <EpicGeneration />
+          ) : (
+            ""
+          )}
+        </div>
+      </section>
+    </div>
   );
 }
 
