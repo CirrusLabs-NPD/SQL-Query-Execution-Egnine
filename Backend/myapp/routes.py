@@ -27,7 +27,7 @@ import json
 from flask_jwt_extended import create_access_token, jwt_required ,get_jwt_identity
 
 import os
-
+import pandas as pd 
 main = Blueprint('main', __name__)
 bcrypt = Bcrypt()
 
@@ -67,6 +67,43 @@ def upload_file():
                             "data": df_json}), 200
         except Exception as e:
             return jsonify({"error": str(e)}), 500
+        
+# sample dataframes for test purposes, to be replaced by data from PG or pd.read_excel 
+# note import from backedn as one single df, will write code to auto split it here
+# couldn't run due to Pg issue, need help in actually running the code
+
+df1 = pd.DataFrame({
+    'A': [1, 2, 3],
+    'B': [4, 5, 6]
+})
+
+df2 = pd.DataFrame({
+    'X': ['a', 'b', 'c'],
+    'Y': ['d', 'e', 'f']
+})
+
+dataframes = [df1, df2]
+df_names = ['employee_validation','department_validation']
+        
+
+def dataframes_to_json(dfs, names):
+    dfs_json = [df.to_json(orient='split') for df in dfs]
+    return jsonify({'dataframes': dfs_json, 'names': names})
+
+@app.route('/get_dataframes', methods=['GET'])
+def get_dataframes():
+    return dataframes_to_json(dataframes, df_names)
+
+@app.route('/receive_dataframe', methods=['POST'])
+@cross_origin()
+def receive_dataframe():
+    data = request.get_json()
+    received_df = pd.read_json(data['dataframe'], orient='split')
+    # Process the received DataFrame as needed
+    print(received_df)
+    return jsonify({'status': 'success', 'message': 'DataFrame received successfully'})
+
+
 
 # Your authentication decorator
 # def token_required(func):
