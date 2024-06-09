@@ -97,34 +97,9 @@ def upload_file():
             return jsonify({"error": str(e)}), 500
 
 
-"""
-@app.route('/download', methods=['GET'])
-@cross_origin()
-def download_excel():
+# df is the dataframe with whatever has been uploaded
 
-    data = {'Name': ['Alice', 'Bob', 'Charlie'],
-            'Age': [25, 30, 35]}
-    df = pd.DataFrame(data)
 
-    # Save the DataFrame to an Excel file
-    excel_path = os.path.join(UPLOAD_FOLDER, 'data.xlsx')
-    df.to_excel(excel_path, index=False)
-
-    # Send the Excel file to the client for download
-    return send_file(excel_path, as_attachment=True)
-
-"""
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
-
-
-
-### start with the SQL queries 
-
-# server_name = 
-# server_id = 
-
-
-# df["query_1"]
-# df["query_2"]

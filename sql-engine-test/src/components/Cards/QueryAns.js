@@ -32,19 +32,158 @@ export const QueryAns = () => {
     "Thingamagigy validation",
     "one more validation",
   ]);
-
+  const [checkboxStates, setCheckboxStates] = useState({});
+  const [independentCheckbox, setIndependentCheckbox] = useState(false);
   const [showTables, setShowTables] = useState(false);
   const [tableData, setTableData] = useState([]);
+  const [activeTableIndex, setActiveTableIndex] = useState(null);
+  const [tableCheckboxStates, setTableCheckboxStates] = useState({});
+  const [tableDataArray, setTableDataArray] = useState([]);
 
   // Function to fetch data from backend (replace with actual endpoint)
   const fetchDataFromBackend = async () => {
     try {
       const response = await axios.get(
         "https://jsonplaceholder.typicode.com/posts"
-      ); // Example API
-      setTableData(response.data.slice(0, 4)); // Limiting to 4 for example purposes
+      ); // Example API endpoint
+      setTableDataArray(response.data); // Assuming the response is an array of tables
     } catch (error) {
       console.error("Error fetching data:", error);
+    }
+  };
+
+  const handleIndependentCheckboxChange = (checked) => {
+    setIndependentCheckbox(checked);
+    if (checked) {
+      setShowCheckboxes(false);
+      setShowTables(false);
+      setCheckboxStates({});
+      setActiveTableIndex(null);
+    }
+  };
+
+  // Handler for first dropdown checkbox
+  const handleFirstDropdownChange = (checked) => {
+    setShowCheckboxes(checked);
+    if (checked) {
+      setIndependentCheckbox(false);
+      setShowTables(false);
+    } else {
+      setCheckboxStates({});
+    }
+  };
+
+  // Handler for third dropdown checkbox
+  const handleThirdDropdownChange = (checked) => {
+    setShowTables(checked);
+    if (checked) {
+      setIndependentCheckbox(false);
+      setShowCheckboxes(false);
+      setCheckboxStates({});
+      setActiveTableIndex(null);
+    }
+  };
+
+  // Handler for checkbox states under second dropdown
+  const handleCheckboxChange = (index, checked) => {
+    setCheckboxStates((prev) => ({
+      ...prev,
+      [index]: checked,
+    }));
+  };
+
+  // Handler for table button click
+  const handleTableButtonClick = (index) => {
+    if (activeTableIndex === index) {
+      setActiveTableIndex(null);
+      setTableCheckboxStates((prev) => ({
+        ...prev,
+        [index]: {},
+      }));
+    } else {
+      setActiveTableIndex(index);
+    }
+  };
+
+  // Handler for table checkbox states
+  const handleTableCheckboxChange = (tableIndex, rowIndex, checked) => {
+    setTableCheckboxStates((prev) => ({
+      ...prev,
+      [tableIndex]: {
+        ...prev[tableIndex],
+        [rowIndex]: checked,
+      },
+    }));
+  };
+
+  // Function to prepare form data as JSON
+  const prepareFormData = () => {
+    const formData = {};
+
+    if (independentCheckbox) {
+      // If the independent checkbox is checked, include all items from all tables
+      formData.tables = tableDataArray.map((table, tableIndex) => ({
+        item: checkboxArray[tableIndex],
+        values: table.rows.map((row) =>
+          row.reduce(
+            (acc, cell, index) => ({ ...acc, [`column_${index}`]: cell }),
+            {}
+          )
+        ),
+      }));
+    } else {
+      formData.tables = checkboxArray
+        .map((item, index) => {
+          if (checkboxStates[index]) {
+            return {
+              item,
+              values: tableDataArray[index].rows.map((row) =>
+                row.reduce(
+                  (acc, cell, cellIndex) => ({
+                    ...acc,
+                    [`column_${cellIndex}`]: cell,
+                  }),
+                  {}
+                )
+              ),
+            };
+          } else if (index === activeTableIndex) {
+            return {
+              item,
+              values: tableDataArray[index].rows
+                .filter(
+                  (row, rowIndex) => tableCheckboxStates[index]?.[rowIndex]
+                )
+                .map((row) =>
+                  row.reduce(
+                    (acc, cell, cellIndex) => ({
+                      ...acc,
+                      [`column_${cellIndex}`]: cell,
+                    }),
+                    {}
+                  )
+                ),
+            };
+          }
+          return null;
+        })
+        .filter((table) => table !== null);
+    }
+
+    return formData;
+  };
+
+  // Function to submit form data to the backend
+  const handleSubmit = async () => {
+    const formData = prepareFormData();
+    console.log("Form Data:", JSON.stringify(formData, null, 2)); // Log form data for debugging
+
+    try {
+      await axios.post("https://example.com/api/submit", formData); // Example API endpoint
+      alert("Form data submitted successfully!");
+    } catch (error) {
+      console.error("Error submitting form data:", error);
+      alert("Failed to submit form data.");
     }
   };
 
@@ -64,11 +203,13 @@ export const QueryAns = () => {
         head="Direct Execution"
         para="Please provide the correct execution for the SQL queries "
       />
-      <div className="flex mt-10 mb-5 border-2 rounded-lg border-[#e0def7] w-40 h-10 p-2 transition-all text-center">
+      <div className="flex mt-5 mb-5 border-2 rounded-lg border-[#e0def7] w-40 h-10 p-2 transition-all text-center">
         <input
           type="checkbox"
           className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 "
           id="full-exec-box"
+          checked={independentCheckbox}
+          onChange={(e) => handleIndependentCheckboxChange(e.target.checked)}
         ></input>
         <label for="full-exec-box" className="ms-2 text-sm font-medium">
           Full Execution
@@ -80,7 +221,8 @@ export const QueryAns = () => {
         <input
           type="checkbox"
           className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 "
-          onChange={(e) => setShowCheckboxes(e.target.checked)}
+          checked={showCheckboxes}
+          onChange={(e) => handleFirstDropdownChange(e.target.checked)}
           id="multi-suite-select"
         />
         <label for="multi-suite-select" className="ms-2 text-sm font-medium">
@@ -90,13 +232,14 @@ export const QueryAns = () => {
 
       {/* Second Dropdown */}
       {showCheckboxes && (
-        <div className="flex flex-col mb-5 border-2 rounded-lg border-[#e0def7] w-64 h-fit p-2 transition-all text-center">
-          <h3 className="bg-[#e0def7] rounded-lg p-1">Suite List</h3>
+        <div className="flex flex-col mb-5 border-2 rounded-lg border-[#e0def7] w-64 h-52 overflow-auto p-2 transition-all text-center">
           {checkboxArray.map((item, index) => (
             <div key={index} className="flex m-5 ">
               <input
                 className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 "
                 type="checkbox"
+                checked={checkboxStates[index] || false}
+                onChange={(e) => handleCheckboxChange(index, e.target.checked)}
               />
               <label className="ms-2 text-sm font-medium">{item}</label>
             </div>
@@ -106,38 +249,65 @@ export const QueryAns = () => {
 
       {/* Third Dropdown */}
       <div className="mb-5 ">
-        <button
-          className="border-[#e0def7] border-2 rounded-lg hover:bg-[#e0def7] p-5 text-center "
-          onClick={() => setShowTables(!showTables)}
-        >
-          {showTables ? "Close Multi SQL select" : "Show Multi SQL select"}
-        </button>
+        <label className="border-[#e0def7] border-2 rounded-lg hover:bg-[#e0def7] p-2 text-center ">
+          <input
+            type="checkbox"
+            className="mr-2"
+            checked={showTables}
+            onChange={(e) => handleThirdDropdownChange(e.target.checked)}
+          />
+          Multi SQL select
+        </label>
         {showTables && (
-          <div className="m-5 h-52 overflow-auto">
+          <div className="mt-5 h-52 overflow-auto border-2 border-[#e0def7] rounded-lg px-5 pb-5">
             {checkboxArray.map((item, index) => (
               <div key={index} className="mt-5">
-                <label>{item}</label>
-                {tableData[index] && (
-                  <table border="1" style={{ marginTop: "10px" }}>
+                <button
+                  className="bg-white border-2 border-[#e0def7] px-4 py-2 rounded-lg"
+                  onClick={() => handleTableButtonClick(index)}
+                >
+                  {item}
+                </button>
+                {activeTableIndex === index && tableDataArray[index] && (
+                  <table className="mt-4 w-full table-auto">
                     <thead>
                       <tr>
-                        {Object.keys(tableData[index]).map((key) => (
-                          <th key={key}>{key}</th>
+                        {tableDataArray[index].columns.map((column, idx) => (
+                          <th key={idx} className="border p-2">
+                            {column}
+                          </th>
                         ))}
-                        <th>Select</th>
+                        <th className="border p-2">Select</th>
                       </tr>
                     </thead>
                     <tbody>
-                      <tr>
-                        {Object.values(tableData[index]).map(
-                          (value, valueIndex) => (
-                            <td key={valueIndex}>{value}</td>
-                          )
-                        )}
-                        <td>
-                          <input type="checkbox" />
-                        </td>
-                      </tr>
+                      {tableDataArray[index].rows.map((row, rowIndex) => (
+                        <tr key={rowIndex}>
+                          {row.map((cell, cellIndex) => (
+                            <td key={cellIndex} className="border p-2">
+                              {cell}
+                            </td>
+                          ))}
+                          <td className="border p-2">
+                            <input
+                              type="checkbox"
+                              checked={
+                                tableCheckboxStates[index]
+                                  ? tableCheckboxStates[index][rowIndex] ||
+                                    false
+                                  : false
+                              }
+                              onChange={(e) =>
+                                handleTableCheckboxChange(
+                                  index,
+                                  rowIndex,
+                                  e.target.checked
+                                )
+                              }
+                            />
+                          </td>
+                        </tr>
+                      ))}
                     </tbody>
                   </table>
                 )}
@@ -150,6 +320,7 @@ export const QueryAns = () => {
         <button
           className="py-3 float-right mt-[5%] ml-auto hover:bg-red-500 bg-[#d5292a] text-sm text-white w-[110px] rounded-lg"
           type="submit"
+          onClick={handleSubmit}
         >
           Execute
         </button>
