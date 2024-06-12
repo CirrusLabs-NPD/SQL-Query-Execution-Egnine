@@ -13,7 +13,7 @@ def create_app():
 
     #app.config['SECRET_KEY'] = "204475107210797805381198621683232319326"
     app.config[
-        "SQLALCHEMY_DATABASE_URI"] = ""
+        "SQLALCHEMY_DATABASE_URI"] = "postgresql://queryexecutionuser:2VfcrHUJBtes2Jd7scvVvRMjaClQpbGL@dpg-cpgonqmct0pc739t0vtg-a.oregon-postgres.render.com/queryexecutiondb"
 
     jwt=JWTManager(app)
     db.init_app(app)
