@@ -4,7 +4,7 @@ from sqlalchemy.orm import relationship
  
 class MdDatabase(db.Model):
     __tablename__ = 'md_database'
-    db_id = db.Column(db.Integer, primary_key=True)
+    db_id = db.Column(db.Integer, db.ForeignKey('md_database.db_id'), primary_key=True)
     db_name = db.Column(db.String(2))
     on_cloud_flg = db.Column(db.String(2))
     created_at = db.Column(db.DateTime)
@@ -34,21 +34,22 @@ class MdDbConfig(db.Model):
  
 class MdRole(db.Model):
     __tablename__ = 'md_role'
-    role_id = db.Column(db.Integer, primary_key=True)
+    role_id = db.Column(db.Integer, primary_key=True) #updated
     role_name = db.Column(db.String(2))
     role_group = db.Column(db.String(2))
-    role_created_dt = db.Column(db.DateTime)
-    role_modified_dt = db.Column(db.DateTime)
+    role_created_dt = db.Column(db.DateTime, default=func.now())
+    role_modified_dt = db.Column(db.DateTime, default=func.now(), onupdate=func.now())
     privs = db.relationship("MdPrivs", back_populates="role")
- 
+
 class MdPrivs(db.Model):
     __tablename__ = 'md_privileages'
-    priv_id = db.Column(db.Integer, primary_key=True)
-    role_id = db.Column(db.Integer, db.ForeignKey('md_role.role_id'))
+    priv_id = db.Column(db.Integer, primary_key=True)# updated
+    role_id = db.Column(db.Integer, db.ForeignKey('md_role.role_id'), nullable = False)  # Corrected ForeignKey
     privileage_name = db.Column(db.String(2))
-    created_dt = db.Column(db.DateTime)
-    modified_dt = db.Column(db.DateTime)
+    created_dt = db.Column(db.DateTime, default=func.now()) # updated
+    modified_dt = db.Column(db.DateTime, default=func.now(), onupdate=func.now())
     role = db.relationship("MdRole", back_populates="privs")
+
  
 class MdSuite(db.Model):
     __tablename__ = 'md_suite'

@@ -13,12 +13,6 @@ export const FileUpload = () => {
   const [option, setOption] = useState("");
   const [data, setData] = useState([]);
 
-  const today = new Date();
-  const month = today.getMonth() + 1;
-  const day = today.getDate();
-  const year = today.getFullYear();
-  const currentDate = day + "/" + month + "/" + year;
-
   const handleFileChange = (e) => {
     const selectedFile = e.target.files[0];
     setFile(selectedFile);

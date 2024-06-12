@@ -28,6 +28,8 @@ from flask_jwt_extended import create_access_token, jwt_required ,get_jwt_identi
 
 import os
 import pandas as pd 
+import random
+
 main = Blueprint('main', __name__)
 bcrypt = Bcrypt()
 
@@ -37,7 +39,6 @@ CORS(app)
 
 allowed_origins = [
     "http://localhost:3000",  # Replace with the actual domains you want to allow
-    "https://cirrusinsight-ai.onrender.com",
 ]
 
 CORS(app, origins=allowed_origins, methods=["GET", "POST", "PUT", "DELETE"], allow_headers=["Authorization"], supports_credentials=True)
@@ -72,27 +73,31 @@ def upload_file():
 # note import from backedn as one single df, will write code to auto split it here
 # couldn't run due to Pg issue, need help in actually running the code
 
-df1 = pd.DataFrame({
-    'A': [1, 2, 3],
-    'B': [4, 5, 6]
-})
+df_backend_fp = pd.read_excel("/Users/Raghav/Documents/Emory /Emory Srping Sem 2024/Internship/SQL-Query-Execution-Egnine/Backend/myapp/assets/test_1.xlsx") # dataframe to represent all the data regarding the queries in the backend
 
-df2 = pd.DataFrame({
-    'X': ['a', 'b', 'c'],
-    'Y': ['d', 'e', 'f']
-})
+def suite_name_array_creation (df): 
+    suite_names = df['Suite_Name'].unique()  
+    return suite_names
 
-dataframes = [df1, df2]
-df_names = ['employee_validation','department_validation']
-        
+def array_of_df_creation (df, names): 
+    df2 = []
+    for x in names: 
+        split_df = df[df['Suite_Name']==x]
+        df2.append(split_df)
+    return df2
 
 def dataframes_to_json(dfs, names):
     dfs_json = [df.to_json(orient='split') for df in dfs]
     return jsonify({'dataframes': dfs_json, 'names': names})
 
 @app.route('/get_dataframes', methods=['GET'])
+@cross_origin()
 def get_dataframes():
+    df_names = suite_name_array_creation(df_backend_fp)
+    dataframes = array_of_df_creation(df_backend_fp, df_names)
     return dataframes_to_json(dataframes, df_names)
+
+
 
 @app.route('/receive_dataframe', methods=['POST'])
 @cross_origin()
@@ -102,6 +107,25 @@ def receive_dataframe():
     # Process the received DataFrame as needed
     print(received_df)
     return jsonify({'status': 'success', 'message': 'DataFrame received successfully'})
+
+
+def generate_table(n):
+    return [[random.randint(1, 100) for _ in range(n)] for _ in range(n)]
+
+@app.route('/table1')
+@cross_origin()
+def table1():
+    n = 5  # You can change the size as needed
+    table = generate_table(n)
+    return jsonify(table)
+
+@app.route('/table2')
+@cross_origin()
+def table2():
+    n = 5  # You can change the size as needed
+    table = generate_table(n)
+    return jsonify(table)
+
 
 
 
