@@ -4,34 +4,11 @@ import { useForm } from "../../context/FormContext";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import "./smallCSS.css";
-import {
-  Button,
-  Radio,
-  RadioGroup,
-  FormControlLabel,
-  Checkbox,
-  TextField,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-} from "@material-ui/core";
-import MaterialTable from "material-table";
 import axios from "axios";
 
 export const QueryAns = () => {
   const [showCheckboxes, setShowCheckboxes] = useState(false);
-  const [checkboxArray, setCheckboxArray] = useState([
-    // dummy array to be changed so that backend array can be fed
-    "Department validation",
-    "Employee validation",
-    "customer validation",
-    "Thingamagigy validation",
-    "one more validation",
-  ]);
+  const [checkboxArray, setCheckboxArray] = useState([]);
   const [checkboxStates, setCheckboxStates] = useState({});
   const [independentCheckbox, setIndependentCheckbox] = useState(false);
   const [showTables, setShowTables] = useState(false);
@@ -43,10 +20,11 @@ export const QueryAns = () => {
   // Function to fetch data from backend (replace with actual endpoint)
   const fetchDataFromBackend = async () => {
     try {
-      const response = await axios.get(
-        "https://jsonplaceholder.typicode.com/posts"
-      ); // Example API endpoint
-      setTableDataArray(response.data); // Assuming the response is an array of tables
+      const response = await axios.get("http://127.0.0.1:5000/get_dataframes");
+      const result = response.data;
+      const { dataframes, names } = result;
+      setCheckboxArray(names);
+      setTableDataArray(dataframes);
     } catch (error) {
       console.error("Error fetching data:", error);
     }
