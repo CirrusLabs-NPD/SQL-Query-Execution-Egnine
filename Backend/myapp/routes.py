@@ -100,15 +100,14 @@ def generate_table(n):
 @main.route('/table1',methods = ['GET'])
 @cross_origin()
 def table1():
-    df_sample = pd.read_excel("/Users/Raghav/Documents/Emory /Emory Srping Sem 2024/Internship/SQL-Query-Execution-Egnine/Backend/myapp/assets/test_1.xlsx")
-    table_data = df_sample.values.tolist()  # Convert DataFrame to list of lists
-    table = {'table': table_data} 
-    return jsonify(table)
+    df_sample = pd.read_excel("/Users/Raghav/Documents/Emory /Emory Srping Sem 2024/Internship/SQL-Query-Execution-Egnine/Backend/myapp/assets/Test2(summary_rep).xlsx")
+    table = df_sample.to_json(orient="records")
+    return jsonify({"data": table})
 
 @main.route('/table2', methods = ['GET'])
 @cross_origin()
-def table2():
-    n = 5  # You can change the size as needed
-    table = generate_table(n)
-    return jsonify(table)
+def table2(): 
+    df_sample = pd.read_excel("/Users/Raghav/Documents/Emory /Emory Srping Sem 2024/Internship/SQL-Query-Execution-Egnine/Backend/myapp/assets/test_1.xlsx")
+    table = df_sample.to_json(orient="records")
+    return jsonify({"data": table})
 
