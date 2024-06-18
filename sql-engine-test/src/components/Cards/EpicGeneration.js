@@ -14,8 +14,8 @@ export const EpicGeneration = () => {
   const [selectedViewError, setSelectedViewError] = useState(false);
 
   const fetchTableData = async (table) => {
-    const response = await fetch(`http://127.0.0.1:5000/${table}`);
-    const data = await response.json();
+    const response = await axios.get(`http://127.0.0.1:5000/${table}`);
+    const data = JSON.parse(response.data.data);
     setTableData(data);
     setCurrentTable(table);
     setSelectedViewError(false);
@@ -35,13 +35,13 @@ export const EpicGeneration = () => {
       <table>
         <thead>
           <tr>
-            {Object.keys(data[0]).map((key) => (
+            {Object.keys(tableData[0]).map((key) => (
               <th key={key}>{key}</th>
             ))}
           </tr>
         </thead>
         <tbody>
-          {data.map((row, index) => (
+          {tableData.map((row, index) => (
             <tr key={index}>
               {Object.values(row).map((value, i) => (
                 <td key={i}>{value}</td>
@@ -72,11 +72,13 @@ export const EpicGeneration = () => {
     }
 
     const doc = new jsPDF();
+    const headers = Object.keys(tableData[0]);
+    const data = tableData.map((row) => Object.values(row));
 
     // Add table to PDF
     doc.autoTable({
-      head: [Object.keys(tableData[0])],
-      body: tableData,
+      head: [headers],
+      body: data,
     });
 
     doc.save(`${currentTable}.pdf`);
