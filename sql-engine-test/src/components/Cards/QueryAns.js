@@ -20,11 +20,12 @@ export const QueryAns = () => {
   // Function to fetch data from backend (replace with actual endpoint)
   const fetchDataFromBackend = async () => {
     try {
-      const response = await axios.get("http://127.0.0.1:5000/get_dataframes");
-      const result = response.data;
-      const { dataframes, names } = result;
-      setCheckboxArray(names);
-      setTableDataArray(dataframes);
+      const response = await axios.get("http://127.0.0.1:5000/get_data");
+      console.log(response);
+      const fetechedata = response.data;
+      //const suites = [...new Set(fetchedData.map((row) => row.suite_name))];
+      //setCheckboxArray(suites);
+      // splitting json df into an array of tables set into table data array
     } catch (error) {
       console.error("Error fetching data:", error);
     }
