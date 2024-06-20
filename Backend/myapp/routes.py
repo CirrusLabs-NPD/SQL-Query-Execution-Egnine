@@ -1,19 +1,14 @@
 # from flask import Flask, Blueprint, jsonify, redirect, url_for ,request ,make_response ,redirect_template , session
 from flask import Flask, Blueprint, jsonify, redirect, url_for, request, make_response, session
 from datetime import datetime , timedelta
-import jwt
-from functools import wraps
-from myapp.auth import create_token, decode_token
 from .extensions import db
 from .models import MdDatabase, MdDbConfig ,MdPrivs ,MdResultSet ,MdRole ,MdSqlqry ,MdSuite ,MdTempResultSet ,User, QueryExecnBatch
 import requests
 from flask_bcrypt import Bcrypt  
 from flask_cors import CORS , cross_origin  # Import CORS
 from sqlalchemy.orm.exc import NoResultFound
-
 import json
 from flask_jwt_extended import create_access_token, jwt_required ,get_jwt_identity
-
 import os
 import pandas as pd 
 import random
@@ -23,7 +18,6 @@ bcrypt = Bcrypt()
 
 allowed_origins = [
     "http://localhost:3000"
-
 ]
 
 CORS(main, resources={r"/*": {"origins": allowed_origins}}, supports_credentials=True)
@@ -48,11 +42,53 @@ def upload_file():
             df = pd.read_excel(file_path)
             df_f10 = df.head(10)
             df_json = df_f10.to_json(orient="records")
+            statement = upload_data_pg1(df)
             # Do something with the dataframe (e.g., print or process)
-            return jsonify({"message": "File uploaded and processed successfully",
+            return jsonify({"message": statement,
                             "data": df_json}), 200
         except Exception as e:
             return jsonify({"error": str(e)}), 500
+        
+def upload_data_pg1 (df): 
+    current_time = datetime.now()
+    
+    # Iterate over DataFrame rows
+    for index, row in df.iterrows():
+        qry_name = row['Description']
+        sql_qry_1 = row['Query_1']
+        sql_qry_2 = row['Query_2']
+        suite_name = row['Suite_Name']
+        sql_qry1_db_id = row['Query_1_DB']
+        sql_qry2_db_id = row['Query_2_DB']
+        qry_expected_op = row['Expected_Result']
+
+        print(qry_name, sql_qry_1, sql_qry_2, suite_name, sql_qry1_db_id, sql_qry2_db_id, qry_expected_op)
+
+        suite = MdSuite.query.filter_by(suite_name=suite_name).first()
+
+        if suite:
+            suite_id = suite.suite_id
+        else:
+            suite_id = None  # Handle the case where the suite is not found
+
+
+            # Create a new record
+        new_qry = MdSqlqry(
+            qry_name=qry_name,
+            sql_qry_1=sql_qry_1,
+            sql_qry_2=sql_qry_2,
+            suite_id=suite_id,
+            sql_qry1_db_id=sql_qry1_db_id,
+            sql_qry2_db_id=sql_qry2_db_id,
+            qry_expected_op=qry_expected_op,
+            created_dt=current_time,
+            modified_dt=current_time
+        )
+        db.session.add(new_qry)
+    
+    db.session.commit()
+
+    return 'Data inserted or updated successfully'
         
 # sample dataframes for test purposes, to be replaced by data from PG or pd.read_excel 
 # note import from backedn as one single df, will write code to auto split it here
@@ -60,42 +96,35 @@ def upload_file():
 
 df_backend_fp = pd.read_excel("/Users/Raghav/Documents/Emory /Emory Srping Sem 2024/Internship/SQL-Query-Execution-Egnine/Backend/myapp/assets/test_1.xlsx") # dataframe to represent all the data regarding the queries in the backend
 
-def suite_name_array_creation (df): 
-    suite_names = df['Suite_Name'].unique()  
-    return suite_names
+def pg_2_Db_to_Df (): 
+    retrieval = session.query(MdSqlqry.qry_name,MdSqlqry.suite_id,MdSqlqry.sql_qry_1,MdSqlqry.sql_qry_2,MdSqlqry.qry_expected_op).all()
+    df = pd.DataFrame(retrieval, columns=['Descritpion','suite_name','Query_1','Query_2','Expected_result'])
+    return df
 
-def array_of_df_creation (df, names): 
-    df2 = []
-    for x in names: 
-        split_df = df[df['Suite_Name']==x]
-        df2.append(split_df)
-    return df2
-
-def dataframes_to_json(dfs, names):
-    dfs_json = [df.to_json(orient='split') for df in dfs]
-    return jsonify({'dataframes': dfs_json, 'names': names})
-
-@main.route('/get_dataframes', methods=['GET'])
+@main.route('/get_data', methods=['GET'])
 @cross_origin()
 def get_dataframes():
-    df_names = suite_name_array_creation(df_backend_fp)
-    dataframes = array_of_df_creation(df_backend_fp, df_names)
-    return dataframes_to_json(dataframes, df_names)
+    df = pg_2_Db_to_Df
+    return df.to_json(orient='records')
 
 
 
-@main.route('/receive_dataframe', methods=['POST'])
+@main.route('/post_dataframe', methods=['POST'])
 @cross_origin()
 def receive_dataframe():
     data = request.get_json()
     received_df = pd.read_json(data['dataframe'], orient='split')
-    # Process the received DataFrame as needed
     print(received_df)
     return jsonify({'status': 'success', 'message': 'DataFrame received successfully'})
 
+@main.route('/submit_selection', methods=['POST'])
+@cross_origin
+def submit_selection():
+    selected_rows = request.json.get('selected_rows')
+    df = pg_2_Db_to_Df
+    selected_df = df[df.index.isin(selected_rows)]
+    return selected_df.to_json(orient='records')
 
-def generate_table(n):
-    return [[random.randint(1, 100) for _ in range(n)] for _ in range(n)]
 
 @main.route('/table1',methods = ['GET'])
 @cross_origin()
