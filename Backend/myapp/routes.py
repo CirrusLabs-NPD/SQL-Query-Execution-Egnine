@@ -107,23 +107,40 @@ def get_dataframes():
     df = pg_2_Db_to_Df
     return df.to_json(orient='records')
 
-
-
-@main.route('/post_dataframe', methods=['POST'])
-@cross_origin()
-def receive_dataframe():
-    data = request.get_json()
-    received_df = pd.read_json(data['dataframe'], orient='split')
-    print(received_df)
-    return jsonify({'status': 'success', 'message': 'DataFrame received successfully'})
-
 @main.route('/submit_selection', methods=['POST'])
 @cross_origin
 def submit_selection():
     selected_rows = request.json.get('selected_rows')
     df = pg_2_Db_to_Df
     selected_df = df[df.index.isin(selected_rows)]
-    return selected_df.to_json(orient='records')
+    for index,row in selected_df.iterrows():
+        qry_name = row['Description']
+        expected_result = row['Expected_result']
+
+        qry_id = MdSqlqry.query.filter_by(qry_name=qry_name).first()
+
+        new_qry = MdTempResultSet(
+            qry_id=qry_id,
+            sql_qry_1_op= expected_result,
+            sql_qry_2_op= expected_result
+        )
+        db.session.add(new_qry)
+    db.session.commit()
+    # query against snowflake here and add column to selected df with passed or not 
+
+    # passing values queried against snowflake here, values into final table here
+    # for index,row in selected_df.iterrows(): 
+    #     # issue with what goes into what here
+
+
+
+
+
+def pg_3_report():
+    retrieval = session.query().all()
+    df = pd.DataFrame() # here there need to be columns created for each (batch_id, qry_name, pass/fail)
+    return df 
+
 
 
 @main.route('/table1',methods = ['GET'])
