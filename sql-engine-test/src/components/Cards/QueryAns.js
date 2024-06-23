@@ -22,10 +22,24 @@ export const QueryAns = () => {
     try {
       const response = await axios.get("http://127.0.0.1:5000/get_data");
       console.log(response);
-      const fetechedata = response.data;
-      //const suites = [...new Set(fetchedData.map((row) => row.suite_name))];
-      //setCheckboxArray(suites);
-      // splitting json df into an array of tables set into table data array
+      const result = response.data;
+      const data = result.data; // Parse the JSON string
+      // Check if data is an array
+      if (!Array.isArray(data)) {
+        throw new Error("Expected an array but got something else");
+      }
+      // Extract unique suite names
+      const uniqueSuiteNames = [
+        ...new Set(data.map((item) => item.Suite_Name)),
+      ];
+      setCheckboxArray(uniqueSuiteNames);
+      // Split data into tables by suite_names
+      const tablesBySuite = uniqueSuiteNames.map((suite_name) => ({
+        suite_name,
+        columns: Object.keys(data[0]),
+        rows: data.filter((item) => item.Suite_Name === suite_name),
+      }));
+      setTableDataArray(tablesBySuite);
     } catch (error) {
       console.error("Error fetching data:", error);
     }
@@ -38,6 +52,7 @@ export const QueryAns = () => {
       setShowTables(false);
       setCheckboxStates({});
       setActiveTableIndex(null);
+      fetchDataFromBackend();
     }
   };
 
@@ -100,47 +115,67 @@ export const QueryAns = () => {
     const formData = {};
 
     if (independentCheckbox) {
-      // If the independent checkbox is checked, include all items from all tables
-      formData.tables = tableDataArray.map((table, tableIndex) => ({
-        item: checkboxArray[tableIndex],
+      formData.tables = tableDataArray.map((table) => ({
+        item: table.suite_name,
         values: table.rows.map((row) =>
-          row.reduce(
-            (acc, cell, index) => ({ ...acc, [`column_${index}`]: cell }),
-            {}
-          )
+          Array.isArray(row)
+            ? row.reduce(
+                (acc, cell, index) => ({ ...acc, [`column_${index}`]: cell }),
+                {}
+              )
+            : Object.values(row).reduce(
+                (acc, cell, index) => ({ ...acc, [`column_${index}`]: cell }),
+                {}
+              )
         ),
       }));
     } else {
-      formData.tables = checkboxArray
-        .map((item, index) => {
+      formData.tables = tableDataArray
+        .map((table, index) => {
           if (checkboxStates[index]) {
             return {
-              item,
-              values: tableDataArray[index].rows.map((row) =>
-                row.reduce(
-                  (acc, cell, cellIndex) => ({
-                    ...acc,
-                    [`column_${cellIndex}`]: cell,
-                  }),
-                  {}
-                )
+              item: table.suite_name,
+              values: table.rows.map((row) =>
+                Array.isArray(row)
+                  ? row.reduce(
+                      (acc, cell, index) => ({
+                        ...acc,
+                        [`column_${index}`]: cell,
+                      }),
+                      {}
+                    )
+                  : Object.values(row).reduce(
+                      (acc, cell, index) => ({
+                        ...acc,
+                        [`column_${index}`]: cell,
+                      }),
+                      {}
+                    )
               ),
             };
           } else if (index === activeTableIndex) {
             return {
-              item,
-              values: tableDataArray[index].rows
+              item: table.suite_name,
+              values: table.rows
                 .filter(
                   (row, rowIndex) => tableCheckboxStates[index]?.[rowIndex]
                 )
                 .map((row) =>
-                  row.reduce(
-                    (acc, cell, cellIndex) => ({
-                      ...acc,
-                      [`column_${cellIndex}`]: cell,
-                    }),
-                    {}
-                  )
+                  Array.isArray(row)
+                    ? row.reduce(
+                        (acc, cell, index) => ({
+                          ...acc,
+                          [`column_${index}`]: cell,
+                        }),
+                        {}
+                      )
+                    : Object.values(row).reduce(
+                        (acc, cell, index) => ({
+                          ...acc,
+                          [`column_${index}`]: cell,
+                        }),
+                        {}
+                      )
                 ),
             };
           }
@@ -158,15 +193,21 @@ export const QueryAns = () => {
     console.log("Form Data:", JSON.stringify(formData, null, 2)); // Log form data for debugging
 
     try {
-      await axios.post("https://example.com/api/submit", formData); // Example API endpoint
+      await axios.post("http://127.0.0.1:5000/submit_selection", formData); // Example API endpoint
       alert("Form data submitted successfully!");
     } catch (error) {
       console.error("Error submitting form data:", error);
-      alert("Failed to submit form data.");
     }
   };
 
   // Fetch table data when showTables state changes to true
+
+  useEffect(() => {
+    if (showCheckboxes) {
+      fetchDataFromBackend();
+    }
+  }, [showCheckboxes]);
+
   useEffect(() => {
     if (showTables) {
       fetchDataFromBackend();
@@ -190,7 +231,7 @@ export const QueryAns = () => {
           checked={independentCheckbox}
           onChange={(e) => handleIndependentCheckboxChange(e.target.checked)}
         ></input>
-        <label for="full-exec-box" className="ms-2 text-sm font-medium">
+        <label htmlFor="full-exec-box" className="ms-2 text-sm font-medium">
           Full Execution
         </label>
       </div>
@@ -204,7 +245,10 @@ export const QueryAns = () => {
           onChange={(e) => handleFirstDropdownChange(e.target.checked)}
           id="multi-suite-select"
         />
-        <label for="multi-suite-select" className="ms-2 text-sm font-medium">
+        <label
+          htmlFor="multi-suite-select"
+          className="ms-2 text-sm font-medium"
+        >
           Multi suite select
         </label>
       </div>
@@ -213,9 +257,9 @@ export const QueryAns = () => {
       {showCheckboxes && (
         <div className="flex flex-col mb-5 border-2 rounded-lg border-[#e0def7] w-64 h-52 overflow-auto p-2 transition-all text-center">
           {checkboxArray.map((item, index) => (
-            <div key={index} className="flex m-5 ">
+            <div key={index} className="flex m-5">
               <input
-                className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 "
+                className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
                 type="checkbox"
                 checked={checkboxStates[index] || false}
                 onChange={(e) => handleCheckboxChange(index, e.target.checked)}
@@ -239,19 +283,19 @@ export const QueryAns = () => {
         </label>
         {showTables && (
           <div className="mt-5 h-52 overflow-auto border-2 border-[#e0def7] rounded-lg px-5 pb-5">
-            {checkboxArray.map((item, index) => (
+            {tableDataArray.map((table, index) => (
               <div key={index} className="mt-5">
                 <button
                   className="bg-white border-2 border-[#e0def7] px-4 py-2 rounded-lg"
                   onClick={() => handleTableButtonClick(index)}
                 >
-                  {item}
+                  {table.suite_name}
                 </button>
-                {activeTableIndex === index && tableDataArray[index] && (
+                {activeTableIndex === index && (
                   <table className="mt-4 w-full table-auto">
                     <thead>
                       <tr>
-                        {tableDataArray[index].columns.map((column, idx) => (
+                        {table.columns.map((column, idx) => (
                           <th key={idx} className="border p-2">
                             {column}
                           </th>
@@ -260,9 +304,9 @@ export const QueryAns = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {tableDataArray[index].rows.map((row, rowIndex) => (
+                      {table.rows.map((row, rowIndex) => (
                         <tr key={rowIndex}>
-                          {row.map((cell, cellIndex) => (
+                          {Object.values(row).map((cell, cellIndex) => (
                             <td key={cellIndex} className="border p-2">
                               {cell}
                             </td>
