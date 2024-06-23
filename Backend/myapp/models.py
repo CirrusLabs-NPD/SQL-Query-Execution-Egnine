@@ -76,33 +76,21 @@ class MdSqlqry(db.Model):
 
 class QueryExecnBatch(db.Model):
     __tablename__ = 'query_execn_batch'
-    batch_id = Column(Integer, primary_key=True)
+    batch_id = Column(Integer, Sequence('batch_id_seq'), primary_key=True)
     batch_dt = Column(DateTime)
     batch_start_dt = Column(DateTime)
     batch_end_dt = Column(DateTime)
     batch_status = Column(String(255))
 
-class MdTempResultSet(db.Model):
-    __tablename__ = 'md_temp_result_set'
-    rs_batch_id = Column(Integer, Sequence('barch_id_seq'), primary_key=True)
-    qry_id = Column(Integer, ForeignKey('md_sqlqry.qry_id'))
-    sql_qry_1_result = Column(String(255))
-    sql_qry_2_result = Column(String(255))
-
-    query_id = relationship('MdSqlqry')
-
 class MdResultSet(db.Model):
     __tablename__ = 'md_result_set'
-    rs_id = Column(Integer, primary_key = True)
+    rs_id = Column(Integer, Sequence('rs_id_seq'), primary_key = True)
     rs_batch_id = Column(Integer, ForeignKey('query_execn_batch.batch_id'))
-    qry_id = Column(Integer, ForeignKey('md_temp_result_set.qry_id'), primary_key=True)
-    sql_qry_1_result = Column(String(255))
-    sql_qry_2_result = Column(String(255))
-    qrn_execn_flg = Column(Integer)
-    qrn_execn_status = Column(Integer)
+    qry_id = Column(Integer, ForeignKey('md_sqlqry.qry_id'))
+    sql_qry_1_op = Column(String(255))
+    sql_qry_2_op = Column(String(255))
+    qrn_execn_status = Column(String(255))
 
-    __table_args__ = (
-        ForeignKeyConstraint(['rs_batch_id', 'qry_id'], ['md_temp_result_set.rs_batch_id', 'md_temp_result_set.qry_id']),
-    )
-
+    batch = relationship('QueryExecnBatch')
+    qry = relationship('MdSqlqry')
 
