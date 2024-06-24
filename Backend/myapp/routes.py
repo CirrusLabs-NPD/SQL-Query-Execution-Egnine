@@ -45,6 +45,7 @@ def upload_file():
             df_f10 = df.head(10)
             df_json = df_f10.to_json(orient="records")
             statement = upload_data_pg1(df)
+
             # Do something with the dataframe (e.g., print or process)
             return jsonify({"message": statement,
                             "data": df_json}), 200
@@ -73,20 +74,43 @@ def upload_data_pg1 (df):
         else:
             suite_id = None  # Handle the case where the suite is not found
 
+        
+        existing_qry = MdSqlqry.query.filter_by(qry_name=qry_name).first()
+
+        if existing_qry:
+        # Update existing record
+            existing_qry.sql_qry_1 = sql_qry_1
+            existing_qry.sql_qry_2 = sql_qry_2
+            existing_qry.suite_id = suite_id
+            existing_qry.modified_dt = current_time
+        else:
+            # Create a new record
+            new_qry = MdSqlqry(
+                qry_name=qry_name,
+                sql_qry_1=sql_qry_1,
+                sql_qry_2=sql_qry_2,
+                suite_id=suite_id,
+                sql_qry1_db_id=sql_qry1_db_id,
+                sql_qry2_db_id=sql_qry2_db_id,
+                qry_expected_op=qry_expected_op,
+                created_dt=current_time,
+                modified_dt=current_time
+            )
+            db.session.add(new_qry)
 
             # Create a new record
-        new_qry = MdSqlqry(
-            qry_name=qry_name,
-            sql_qry_1=sql_qry_1,
-            sql_qry_2=sql_qry_2,
-            suite_id=suite_id,
-            sql_qry1_db_id=sql_qry1_db_id,
-            sql_qry2_db_id=sql_qry2_db_id,
-            qry_expected_op=qry_expected_op,
-            created_dt=current_time,
-            modified_dt=current_time
-        )
-        db.session.add(new_qry)
+        # new_qry = MdSqlqry(
+        #     qry_name=qry_name,
+        #     sql_qry_1=sql_qry_1,
+        #     sql_qry_2=sql_qry_2,
+        #     suite_id=suite_id,
+        #     sql_qry1_db_id=sql_qry1_db_id,
+        #     sql_qry2_db_id=sql_qry2_db_id,
+        #     qry_expected_op=qry_expected_op,
+        #     created_dt=current_time,
+        #     modified_dt=current_time
+        # )
+        # db.session.add(new_qry)
     
     db.session.commit()
 
@@ -190,9 +214,9 @@ def pass_fail_create(row):
     result1_pf = pass_fail(result1,row["expected_result"])
     result2_pf = pass_fail(result2,row["expected_result"])
     if result1_pf and result2_pf: 
-        return "pass"
+        return "Pass"
     else: 
-        return "fail"
+        return "Fail"
 
 
 def pass_fail(condition_str,value):
@@ -264,6 +288,7 @@ def table1():
         # Create lists to store data
     suite_names = []
     run_dates = []
+    batch_ids = []
     total_counts = []
     pass_counts = []
     fail_counts = []
@@ -271,7 +296,8 @@ def table1():
         # Iterate through result_sets and calculate counts and percentages
     for result_set, sql_qry, suite, batch, qrn_execn_status in result_sets:
             suite_names.append(suite.suite_name)
-            run_dates.append(batch.batch_start_dt.strftime('%d-%b'))  # Assuming you want only day and month
+            run_dates.append(batch.batch_start_dt.strftime('%d-%b'))
+            batch_ids.append(batch.batch_id)  # Assuming you want only day and month
             total_counts.append(1)  # Each row represents one query execution
             if qrn_execn_status == 'pass':
                 pass_counts.append(1)
@@ -284,13 +310,14 @@ def table1():
     df = pd.DataFrame({
         'Suite_name': suite_names,
         'Run_Date': run_dates,
+        'Batch_id': batch_ids,
         'Total_cnt': total_counts,
         'Pass_cnt': pass_counts,
         'Fail_cnt': fail_counts
     })
 
     # Group by Suite_name and Run_Date to calculate aggregates
-    grouped_df = df.groupby(['Suite_name', 'Run_Date']).agg({
+    grouped_df = df.groupby(['Batch_id','Suite_name','Run_Date']).agg({
         'Total_cnt': 'sum',
         'Pass_cnt': 'sum',
         'Fail_cnt': 'sum'
