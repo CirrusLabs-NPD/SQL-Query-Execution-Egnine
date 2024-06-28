@@ -7,7 +7,8 @@ create two terminals (one for frontend and one for backend)
 
 ### Backend server
 
-''' cd Backend 
+''' 
+cd Backend 
 #(do not create venv it is already created) 
 myapp\Scripts\activate #(to start the venv on windows for Mac: source myapp/bin/activate) 
 pip install requirements.txt
