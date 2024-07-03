@@ -120,7 +120,7 @@ def upload_data_pg1 (df):
 # note import from backedn as one single df, will write code to auto split it here
 # couldn't run due to Pg issue, need help in actually running the code
 
-df_backend_fp = pd.read_excel("/Users/Raghav/Documents/Emory /Emory Srping Sem 2024/Internship/SQL-Query-Execution-Egnine/Backend/myapp/assets/test_1.xlsx") # dataframe to represent all the data regarding the queries in the backend
+
 
 def pg_2_Db_to_Df ():
     session = db.session()
@@ -329,6 +329,7 @@ def table1():
 
     # Drop unnecessary columns if needed (like rs_id and qry_id)
     grouped_df = grouped_df.drop(columns=['rs_id', 'qry_id'], errors='ignore')
+    grouped_df = grouped_df.iloc[::-1]
     table = grouped_df.to_json(orient="records")
     return jsonify({"data": table})
 
