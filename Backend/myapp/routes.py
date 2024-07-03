@@ -329,6 +329,7 @@ def table1():
 
     # Drop unnecessary columns if needed (like rs_id and qry_id)
     grouped_df = grouped_df.drop(columns=['rs_id', 'qry_id'], errors='ignore')
+    grouped_df = grouped_df.iloc[::-1]
     table = grouped_df.to_json(orient="records")
     return jsonify({"data": table})
 
