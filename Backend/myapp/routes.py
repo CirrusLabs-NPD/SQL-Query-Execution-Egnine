@@ -187,8 +187,8 @@ def submit_selection():
         result_set = MdResultSet(
             rs_batch_id=batch_id,
             qry_id=get_qry_id(row['qry_name']),
-            sql_qry_1_op=row['sql_qry_1'],
-            sql_qry_2_op=row['sql_qry_2'],
+            sql_qry_1_op=Sf_qry(row['sql_qry_1']),
+            sql_qry_2_op=Sf_qry(row['sql_qry_2']),
             qrn_execn_status=row['qrn_execn_status']
         )
         db.session.add(result_set)
