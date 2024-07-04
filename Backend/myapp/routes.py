@@ -348,7 +348,7 @@ def table2():
         for result_set in result_sets:
             print(result_set)  # This will help you see what data is retrieved
         # Create DataFrame from the query result, excluding rs_id
-        df = pd.DataFrame(result_sets, columns=['qry_name', 'Suite_name', 'sql_qry_1_op', 'sql_qry_2_op', 'qrn_execn_status'])
+        df = pd.DataFrame(result_sets, columns=['Query Name', 'Suite Name', 'SQL Query 1 Output', 'SQL Query 2 Output', 'Query Execution Status'])
 
         # Convert DataFrame to JSON and return as response
         table = df.to_json(orient="records")
