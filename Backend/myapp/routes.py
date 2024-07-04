@@ -126,7 +126,7 @@ def pg_2_Db_to_Df ():
     session = db.session()
     try:
         retrieval = session.query(MdSqlqry.qry_name,MdSuite.suite_name,MdSqlqry.sql_qry_1,MdSqlqry.sql_qry_2,MdSqlqry.qry_expected_op).join(MdSuite, MdSqlqry.suite_id== MdSuite.suite_id).all()
-        df = pd.DataFrame(retrieval, columns=['Descritpion','Suite_Name','Query_1','Query_2','Expected_result'])
+        df = pd.DataFrame(retrieval, columns=['Description','Suite_Name','Query_1','Query_2','Expected_result'])
         print(df)
         return df
     finally:
