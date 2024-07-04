@@ -220,7 +220,7 @@ def pass_fail_create(row):
 
 
 def pass_fail(condition_str,value):
-    if type(value) == str: 
+    if value == 'connector Programming Error' or value == 'Exception error' : 
         return False
     if condition_str.startswith(">"):
         threshold = float(condition_str[1:])
@@ -260,10 +260,10 @@ def Sf_qry(qry):
         result = cursor.fetchone()[0]
         return result
     except snowflake.connector.ProgrammingError:
-        result = 'fail'
+        result = 'connector Programming Error'
         return result
     except Exception: 
-        result = 'fail'
+        result = 'Exception error'
         return result
     finally:
         cursor.close()
@@ -308,24 +308,24 @@ def table1():
 
     # Create DataFrame from collected lists
     df = pd.DataFrame({
-        'Suite_name': suite_names,
-        'Run_Date': run_dates,
-        'Batch_id': batch_ids,
-        'Total_cnt': total_counts,
-        'Pass_cnt': pass_counts,
-        'Fail_cnt': fail_counts
+        'Suite Name': suite_names,
+        'Run Date': run_dates,
+        'Batch Id': batch_ids,
+        'Total Count': total_counts,
+        'Pass Count': pass_counts,
+        'Fail Count': fail_counts
     })
 
     # Group by Suite_name and Run_Date to calculate aggregates
-    grouped_df = df.groupby(['Batch_id','Suite_name','Run_Date']).agg({
-        'Total_cnt': 'sum',
-        'Pass_cnt': 'sum',
-        'Fail_cnt': 'sum'
+    grouped_df = df.groupby(['Batch Id','Suite Name','Run Date']).agg({
+        'Total Count': 'sum',
+        'Pass Count': 'sum',
+        'Fail Count': 'sum'
     }).reset_index()
 
     # Calculate Pass Percentage and Fail Percentage
-    grouped_df['Pass_Percentage'] = (grouped_df['Pass_cnt'] / grouped_df['Total_cnt']) * 100
-    grouped_df['Fail_Percentage'] = (grouped_df['Fail_cnt'] / grouped_df['Total_cnt']) * 100
+    grouped_df['Pass Percentage'] = (grouped_df['Pass Count'] / grouped_df['Total Count']) * 100
+    grouped_df['Fail Percentage'] = (grouped_df['Fail Count'] / grouped_df['Total Count']) * 100
 
     # Drop unnecessary columns if needed (like rs_id and qry_id)
     grouped_df = grouped_df.drop(columns=['rs_id', 'qry_id'], errors='ignore')
