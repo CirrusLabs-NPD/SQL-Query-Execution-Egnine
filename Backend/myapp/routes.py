@@ -336,20 +336,31 @@ def table1():
 @main.route('/table2', methods = ['GET'])
 @cross_origin()
 def table2(): 
-        subquery = db.session.query(func.max(QueryExecnBatch.batch_id).label('max_batch_id')).subquery()
-
         # Query to fetch MdResultSet with the latest batch_id and join with related tables
-        result_sets = db.session.query(MdSqlqry.qry_name, MdSuite.suite_name, MdResultSet.sql_qry_1_op, MdResultSet.sql_qry_2_op, MdResultSet.qrn_execn_status)\
-            .join(MdSqlqry, MdResultSet.qry_id == MdSqlqry.qry_id)\
-            .join(MdSuite, MdSqlqry.suite_id == MdSuite.suite_id)\
-            .join(QueryExecnBatch, MdResultSet.rs_batch_id == QueryExecnBatch.batch_id)\
-            .filter(QueryExecnBatch.batch_id == subquery.c.max_batch_id)\
-            .all()
-        for result_set in result_sets:
-            print(result_set)  # This will help you see what data is retrieved
-        # Create DataFrame from the query result, excluding rs_id
-        df = pd.DataFrame(result_sets, columns=['Query Name', 'Suite Name', 'SQL Query 1 Output', 'SQL Query 2 Output', 'Query Execution Status'])
+        subquery = db.session.query(func.max(QueryExecnBatch.batch_id).label('max_batch_id')).subquery()
+        result_sets = db.session.query(
+            MdSqlqry.qry_name.label('Query Name'),
+            MdSuite.suite_name.label('Suite Name'),
+            MdResultSet.sql_qry_1_op.label('SQL Query 1 Output'),
+            MdResultSet.sql_qry_2_op.label('SQL Query 2 Output'),
+            MdResultSet.qrn_execn_status.label('Query Execution Status'),
+            MdSqlqry.sql_qry_1.label('SQL Query 1 Name'),
+            MdSqlqry.sql_qry_2.label('SQL Query 2 Name'),
+            QueryExecnBatch.batch_start_dt.label('Batch Start Time'),
+            QueryExecnBatch.batch_end_dt.label('Batch End Time'),
+            MdSqlqry.qry_expected_op.label('Expected Result')
+        ).join(MdSqlqry, MdResultSet.qry_id == MdSqlqry.qry_id)\
+        .join(MdSuite, MdSqlqry.suite_id == MdSuite.suite_id)\
+        .join(QueryExecnBatch, MdResultSet.rs_batch_id == QueryExecnBatch.batch_id)\
+        .all()
 
+    # Create DataFrame from the query result
+        df = pd.DataFrame(result_sets, columns=[
+            'Query Name', 'Suite Name', 'SQL Query 1 Output', 'SQL Query 2 Output',
+            'Query Execution Status', 'SQL Query 1 Name', 'SQL Query 2 Name',
+            'Batch Start Time', 'Batch End Time', 'Expected Result'
+        ])
+        df = df.iloc[::-1]
         # Convert DataFrame to JSON and return as response
         table = df.to_json(orient="records")
         return jsonify({"data": table}), 200
