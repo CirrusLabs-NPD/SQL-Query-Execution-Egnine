@@ -356,10 +356,15 @@ def table2():
 
     # Create DataFrame from the query result
         df = pd.DataFrame(result_sets, columns=[
-            'Query Name', 'Suite Name', 'SQL Query 1 Output', 'SQL Query 2 Output',
+            'Query Description', 'Suite Name', 'SQL Query 1 Output', 'SQL Query 2 Output',
             'Query Execution Status', 'SQL Query 1 Name', 'SQL Query 2 Name',
             'Batch Start Time', 'Batch End Time', 'Expected Result'
         ])
+        df = df[['Suite Name', 'Query Description', 'SQL Query 1 Name', 'SQL Query 2 Name',
+             'SQL Query 1 Output', 'SQL Query 2 Output', 'Expected Result',
+             'Query Execution Status', 'Batch Start Time', 'Batch End Time']]
+        df['Batch Start Time'] = pd.to_datetime(df['Batch Start Time']).dt.strftime('%Y-%m-%d %H:%M:%S')
+        df['Batch End Time'] = pd.to_datetime(df['Batch End Time']).dt.strftime('%Y-%m-%d %H:%M:%S')
         df = df.iloc[::-1]
         # Convert DataFrame to JSON and return as response
         table = df.to_json(orient="records")
