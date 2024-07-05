@@ -343,13 +343,12 @@ def table2():
             .join(MdSqlqry, MdResultSet.qry_id == MdSqlqry.qry_id)\
             .join(MdSuite, MdSqlqry.suite_id == MdSuite.suite_id)\
             .join(QueryExecnBatch, MdResultSet.rs_batch_id == QueryExecnBatch.batch_id)\
-            .filter(QueryExecnBatch.batch_id == subquery.c.max_batch_id)\
             .all()
         for result_set in result_sets:
             print(result_set)  # This will help you see what data is retrieved
         # Create DataFrame from the query result, excluding rs_id
         df = pd.DataFrame(result_sets, columns=['Query Name', 'Suite Name', 'SQL Query 1 Output', 'SQL Query 2 Output', 'Query Execution Status'])
-
+        df = df.iloc[::-1]
         # Convert DataFrame to JSON and return as response
         table = df.to_json(orient="records")
         return jsonify({"data": table}), 200
