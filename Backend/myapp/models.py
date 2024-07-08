@@ -90,7 +90,6 @@ class MdResultSet(db.Model):
     sql_qry_1_op = Column(String(255))
     sql_qry_2_op = Column(String(255))
     qrn_execn_status = Column(String(255))
-
     batch = relationship('QueryExecnBatch')
     qry = relationship('MdSqlqry')
 
