@@ -220,6 +220,7 @@ def pass_fail_create(row):
 
 
 def pass_fail(condition_str,value):
+    condition_str = str(condition_str)
     if value == 'connector Programming Error' or value == 'Exception error' : 
         return False
     if condition_str.startswith(">"):
