@@ -42,6 +42,7 @@ def upload_file():
         # Process the file using pandas
         try:
             df = pd.read_excel(file_path)
+            df.dropna()
             df_f10 = df.head(10)
             df_json = df_f10.to_json(orient="records")
             statement = upload_data_pg1(df)
