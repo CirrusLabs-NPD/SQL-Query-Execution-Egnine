@@ -190,7 +190,10 @@ def submit_selection():
             qry_id=get_qry_id(row['qry_name']),
             sql_qry_1_op=Sf_qry(row['sql_qry_1']),
             sql_qry_2_op=Sf_qry(row['sql_qry_2']),
-            qrn_execn_status=row['qrn_execn_status']
+            qrn_execn_status=row['qrn_execn_status'],
+            sql_qry_1=row['sql_qry_1'],  # Save SQL Query 1
+            sql_qry_2=row['sql_qry_2'],  # Save SQL Query 2
+            expected_op=row['expected_result']  # Save Expected Result
         )
         db.session.add(result_set)
 
@@ -276,18 +279,16 @@ def pg_3_report():
     df = pd.DataFrame() # here there need to be columns created for each (batch_id, qry_name, pass/fail)
     return df 
 
-@main.route('/table1',methods = ['GET'])
+@main.route('/table1', methods=['GET'])
 @cross_origin()
 def table1():
-        # Query MdResultSet and join with related tables to get necessary data
-    result_sets = db.session.query(MdResultSet, MdSqlqry, MdSuite, QueryExecnBatch)\
-            .join(MdSqlqry, MdResultSet.qry_id == MdSqlqry.qry_id)\
-            .join(MdSuite, MdSqlqry.suite_id == MdSuite.suite_id)\
-            .join(QueryExecnBatch, MdResultSet.rs_batch_id == QueryExecnBatch.batch_id)\
-            .add_columns(MdResultSet.qrn_execn_status)\
-            .all()
+    result_sets = db.session.query(MdResultSet, MdSqlqry, MdSuite, QueryExecnBatch) \
+        .join(MdSqlqry, MdResultSet.qry_id == MdSqlqry.qry_id) \
+        .join(MdSuite, MdSqlqry.suite_id == MdSuite.suite_id) \
+        .join(QueryExecnBatch, MdResultSet.rs_batch_id == QueryExecnBatch.batch_id) \
+        .add_columns(MdResultSet.qrn_execn_status, MdResultSet.sql_qry_1, MdResultSet.sql_qry_2, MdResultSet.expected_op) \
+        .all()
 
-        # Create lists to store data
     suite_names = []
     run_dates = []
     batch_ids = []
@@ -295,20 +296,18 @@ def table1():
     pass_counts = []
     fail_counts = []
 
-        # Iterate through result_sets and calculate counts and percentages
-    for result_set, sql_qry, suite, batch, qrn_execn_status in result_sets:
-            suite_names.append(suite.suite_name)
-            run_dates.append(batch.batch_start_dt.strftime('%d-%b'))
-            batch_ids.append(batch.batch_id)  # Assuming you want only day and month
-            total_counts.append(1)  # Each row represents one query execution
-            if qrn_execn_status == 'pass':
-                pass_counts.append(1)
-                fail_counts.append(0)
-            else:
-                pass_counts.append(0)
-                fail_counts.append(1)
+    for result_set, sql_qry, suite, batch, qrn_execn_status, sql_qry_1, sql_qry_2, expected_op in result_sets:
+        suite_names.append(suite.suite_name)
+        run_dates.append(batch.batch_start_dt.strftime('%d-%b'))
+        batch_ids.append(batch.batch_id)
+        total_counts.append(1)
+        if qrn_execn_status == 'pass':
+            pass_counts.append(1)
+            fail_counts.append(0)
+        else:
+            pass_counts.append(0)
+            fail_counts.append(1)
 
-    # Create DataFrame from collected lists
     df = pd.DataFrame({
         'Suite Name': suite_names,
         'Run Date': run_dates,
@@ -318,57 +317,50 @@ def table1():
         'Fail Count': fail_counts
     })
 
-    # Group by Suite_name and Run_Date to calculate aggregates
-    grouped_df = df.groupby(['Batch Id','Suite Name','Run Date']).agg({
+    grouped_df = df.groupby(['Batch Id', 'Suite Name', 'Run Date']).agg({
         'Total Count': 'sum',
         'Pass Count': 'sum',
         'Fail Count': 'sum'
     }).reset_index()
 
-    # Calculate Pass Percentage and Fail Percentage
     grouped_df['Pass Percentage'] = (grouped_df['Pass Count'] / grouped_df['Total Count']) * 100
     grouped_df['Fail Percentage'] = (grouped_df['Fail Count'] / grouped_df['Total Count']) * 100
 
-    # Drop unnecessary columns if needed (like rs_id and qry_id)
     grouped_df = grouped_df.drop(columns=['rs_id', 'qry_id'], errors='ignore')
     grouped_df = grouped_df.iloc[::-1]
     table = grouped_df.to_json(orient="records")
     return jsonify({"data": table})
 
-@main.route('/table2', methods = ['GET'])
+@main.route('/table2', methods=['GET'])
 @cross_origin()
-def table2(): 
-        # Query to fetch MdResultSet with the latest batch_id and join with related tables
-        subquery = db.session.query(func.max(QueryExecnBatch.batch_id).label('max_batch_id')).subquery()
-        result_sets = db.session.query(
-            MdSqlqry.qry_name.label('Query Name'),
-            MdSuite.suite_name.label('Suite Name'),
-            MdResultSet.sql_qry_1_op.label('SQL Query 1 Output'),
-            MdResultSet.sql_qry_2_op.label('SQL Query 2 Output'),
-            MdResultSet.qrn_execn_status.label('Query Execution Status'),
-            MdSqlqry.sql_qry_1.label('SQL Query 1 Name'),
-            MdSqlqry.sql_qry_2.label('SQL Query 2 Name'),
-            QueryExecnBatch.batch_start_dt.label('Batch Start Time'),
-            QueryExecnBatch.batch_end_dt.label('Batch End Time'),
-            MdSqlqry.qry_expected_op.label('Expected Result')
-        ).join(MdSqlqry, MdResultSet.qry_id == MdSqlqry.qry_id)\
-        .join(MdSuite, MdSqlqry.suite_id == MdSuite.suite_id)\
-        .join(QueryExecnBatch, MdResultSet.rs_batch_id == QueryExecnBatch.batch_id)\
+def table2():
+    subquery = db.session.query(func.max(QueryExecnBatch.batch_id).label('max_batch_id')).subquery()
+    result_sets = db.session.query(
+        MdSqlqry.qry_name.label('Query Name'),
+        MdSuite.suite_name.label('Suite Name'),
+        MdResultSet.sql_qry_1_op.label('SQL Query 1 Output'),
+        MdResultSet.sql_qry_2_op.label('SQL Query 2 Output'),
+        MdResultSet.qrn_execn_status.label('Query Execution Status'),
+        MdResultSet.sql_qry_1.label('SQL Query 1 Name'),
+        MdResultSet.sql_qry_2.label('SQL Query 2 Name'),
+        QueryExecnBatch.batch_start_dt.label('Batch Start Time'),
+        QueryExecnBatch.batch_end_dt.label('Batch End Time'),
+        MdResultSet.expected_op.label('Expected Result')
+    ).join(MdSqlqry, MdResultSet.qry_id == MdSqlqry.qry_id) \
+        .join(MdSuite, MdSqlqry.suite_id == MdSuite.suite_id) \
+        .join(QueryExecnBatch, MdResultSet.rs_batch_id == QueryExecnBatch.batch_id) \
         .all()
 
-    # Create DataFrame from the query result
-        df = pd.DataFrame(result_sets, columns=[
-            'Query Description', 'Suite Name', 'SQL Query 1 Output', 'SQL Query 2 Output',
-            'Query Execution Status', 'SQL Query 1 Name', 'SQL Query 2 Name',
-            'Batch Start Time', 'Batch End Time', 'Expected Result'
-        ])
-        df = df[['Suite Name', 'Query Description', 'SQL Query 1 Name', 'SQL Query 2 Name',
+    df = pd.DataFrame(result_sets, columns=[
+        'Query Description', 'Suite Name', 'SQL Query 1 Output', 'SQL Query 2 Output',
+        'Query Execution Status', 'SQL Query 1 Name', 'SQL Query 2 Name',
+        'Batch Start Time', 'Batch End Time', 'Expected Result'
+    ])
+    df = df[['Suite Name', 'Query Description', 'SQL Query 1 Name', 'SQL Query 2 Name',
              'SQL Query 1 Output', 'SQL Query 2 Output', 'Expected Result',
              'Query Execution Status', 'Batch Start Time', 'Batch End Time']]
-        df['Batch Start Time'] = pd.to_datetime(df['Batch Start Time']).dt.strftime('%Y-%m-%d %H:%M:%S')
-        df['Batch End Time'] = pd.to_datetime(df['Batch End Time']).dt.strftime('%Y-%m-%d %H:%M:%S')
-        df = df.iloc[::-1]
-        # Convert DataFrame to JSON and return as response
-        table = df.to_json(orient="records")
-        return jsonify({"data": table}), 200
-
+    df['Batch Start Time'] = pd.to_datetime(df['Batch Start Time']).dt.strftime('%Y-%m-%d %H:%M:%S')
+    df['Batch End Time'] = pd.to_datetime(df['Batch End Time']).dt.strftime('%Y-%m-%d %H:%M:%S')
+    df = df.iloc[::-1]
+    table = df.to_json(orient="records")
+    return jsonify({"data": table}), 200

@@ -89,6 +89,9 @@ class MdResultSet(db.Model):
     qry_id = Column(Integer, ForeignKey('md_sqlqry.qry_id'))
     sql_qry_1_op = Column(String(255))
     sql_qry_2_op = Column(String(255))
+    sql_qry_1 = Column(String(255))  # Store SQL Query 1 at the time of execution
+    sql_qry_2 = Column(String(255))  # Store SQL Query 2 at the time of execution
+    expected_op = Column(String(255))  # Store Expected Result at the time of execution
     qrn_execn_status = Column(String(255))
     batch = relationship('QueryExecnBatch')
     qry = relationship('MdSqlqry')
