@@ -217,17 +217,20 @@ def pass_fail_create(row):
     result2 = Sf_qry(row['sql_qry_2'])
     result1_pf = pass_fail(result1,row["expected_result"])
     result2_pf = pass_fail(result2,row["expected_result"])
+    print(result1_pf)
+    print(result2_pf)
     if result1_pf and result2_pf: 
         return "Pass"
     else: 
         return "Fail"
 
 
-def pass_fail(condition_str,value):
+def pass_fail(value,condition_str):
     condition_str = str(condition_str)
-    if value == 'connector Programming Error' or value == 'Exception error' : 
+    if value == 'Query Does not exist' or value == 'Exception error' :
         return False
-    if condition_str.startswith(">"):
+    value = int(value)
+    if condition_str[0]=='>':
         threshold = float(condition_str[1:])
         if value > threshold:
             return True
@@ -265,7 +268,7 @@ def Sf_qry(qry):
         result = cursor.fetchone()[0]
         return result
     except snowflake.connector.ProgrammingError:
-        result = 'connector Programming Error'
+        result = 'Query Does not exist'
         return result
     except Exception: 
         result = 'Exception error'
@@ -298,10 +301,10 @@ def table1():
 
     for result_set, sql_qry, suite, batch, qrn_execn_status, sql_qry_1, sql_qry_2, expected_op in result_sets:
         suite_names.append(suite.suite_name)
-        run_dates.append(batch.batch_start_dt.strftime('%d-%b'))
+        run_dates.append(batch.batch_start_dt.strftime('%Y-%m-%d %H:%M:%S'))
         batch_ids.append(batch.batch_id)
         total_counts.append(1)
-        if qrn_execn_status == 'pass':
+        if qrn_execn_status == 'Pass':
             pass_counts.append(1)
             fail_counts.append(0)
         else:
@@ -325,8 +328,7 @@ def table1():
 
     grouped_df['Pass Percentage'] = (grouped_df['Pass Count'] / grouped_df['Total Count']) * 100
     grouped_df['Fail Percentage'] = (grouped_df['Fail Count'] / grouped_df['Total Count']) * 100
-
-    grouped_df = grouped_df.drop(columns=['rs_id', 'qry_id'], errors='ignore')
+    grouped_df = grouped_df.drop(columns=['rs_id', 'qry_id','Batch Id'], errors='ignore')
     grouped_df = grouped_df.iloc[::-1]
     table = grouped_df.to_json(orient="records")
     return jsonify({"data": table})
