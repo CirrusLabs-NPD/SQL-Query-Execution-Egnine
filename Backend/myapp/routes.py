@@ -271,7 +271,7 @@ def Sf_qry(qry):
         result = 'Query Does not exist'
         return result
     except Exception: 
-        result = 'Exception error'
+        result = Exception
         return result
     finally:
         cursor.close()
