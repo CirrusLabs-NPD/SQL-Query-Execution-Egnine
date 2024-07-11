@@ -52,6 +52,8 @@ class MdSuite(db.Model):
     __tablename__ = 'md_suite'
     suite_id = Column(Integer, primary_key=True)
     suite_name = Column(String(255))
+    suite_description = Column(String(255))
+    suite_created_by= Column(String(255))
     suite_priority = Column(Integer)
     suite_created_dt = Column(DateTime)
     suite_modified_dt = Column(DateTime)
