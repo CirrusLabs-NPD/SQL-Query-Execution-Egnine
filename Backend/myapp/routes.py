@@ -366,3 +366,61 @@ def table2():
     df = df.iloc[::-1]
     table = df.to_json(orient="records")
     return jsonify({"data": table}), 200
+
+@main.route('/addSuite', methods=['POST'])
+@cross_origin()
+def insert_suite():
+    data = request.get_json()
+    if not data or 'suite_name' not in data or 'suite_description' not in data or 'suite_created_by' not in data:
+        return jsonify({"error": "Invalid data"}), 400
+    suite_name = data['suite_name']
+    suite_description = data['suite_description']
+    suite_created_by = data['suite_created_by']
+ 
+    existing_suite = db.session.query(MdSuite).filter_by(suite_name=suite_name).first()
+    if existing_suite:
+        return jsonify({"error": "Suite with this name already exists"}), 400
+
+    # Get the maximum suite_id and increment by 1
+    max_suite_id = db.session.query(db.func.max(MdSuite.suite_id)).scalar()
+    new_suite_id = max_suite_id + 1 if max_suite_id else 1
+    # Create a new MdSuite instance with default values
+    new_suite = MdSuite(
+        suite_id= new_suite_id,
+        suite_name=suite_name,
+        suite_description=suite_description,
+        suite_created_by=suite_created_by,
+        suite_priority=None,
+        suite_created_dt=datetime.now(),
+        suite_modified_dt=None
+    )
+    db.session.add(new_suite)
+    try:
+        db.session.commit()
+        return jsonify({"success": True}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
+
+@main.route('/getSuite', methods=['GET'])
+@cross_origin()
+def get_suites():
+    try:
+        # Query all records from the MdSuite table
+        suites = MdSuite.query.all()
+        # Convert the records into a list of dictionaries
+        suite_list = [{
+            'suite_id': suite.suite_id,
+            'suite_name': suite.suite_name,
+            'suite_description':suite.suite_description,
+            'suite_created_by':suite.suite_created_by,
+            "suite_priority":suite.suite_priority,
+            'suite_created_dt': suite.suite_created_dt,
+            'suite_modified_dt': suite.suite_modified_dt
+        } for suite in suites]
+        # Return the list as a JSON response
+        suite_list.sort(key=lambda x: x['suite_id'], reverse=True)
+        return jsonify({"data": suite_list}), 200
+    except Exception as e:
+        # Handle any errors that occur during the query
+        return jsonify({"error": str(e)}), 500
