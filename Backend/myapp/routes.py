@@ -42,7 +42,8 @@ def upload_file():
         # Process the file using pandas
         try:
             df = pd.read_excel(file_path)
-            df.dropna()
+            df.dropna(subset=['Query_1'])
+            df = df.fillna('')
             df_f10 = df.head(10)
             df_json = df_f10.to_json(orient="records")
             statement = upload_data_pg1(df)
@@ -184,12 +185,18 @@ def submit_selection():
 
     # Process each row in the DataFrame to create MdResultSet records
     for index, row in combined_df.iterrows():
+        result_1 = Sf_qry(row['sql_qry_1'])
+        if row['sql_qry_2'] == '': 
+            print('fail not here')
+            result_2 = ''
+        else: 
+            result_2 = Sf_qry(row['sql_qry_2'])
         # Create MdResultSet record
         result_set = MdResultSet(
             rs_batch_id=batch_id,
             qry_id=get_qry_id(row['qry_name']),
-            sql_qry_1_op=Sf_qry(row['sql_qry_1']),
-            sql_qry_2_op=Sf_qry(row['sql_qry_2']),
+            sql_qry_1_op=result_1,
+            sql_qry_2_op=result_2,
             qrn_execn_status=row['qrn_execn_status'],
             sql_qry_1=row['sql_qry_1'],  # Save SQL Query 1
             sql_qry_2=row['sql_qry_2'],  # Save SQL Query 2
@@ -214,12 +221,20 @@ def get_qry_id(qry_name):
 
 def pass_fail_create(row):
     result1 = Sf_qry(row['sql_qry_1'])
-    result2 = Sf_qry(row['sql_qry_2'])
+    if row['sql_qry_2'] == '':
+        result2 = ''
+    else:
+        result2 = Sf_qry(row['sql_qry_2'])
     result1_pf = pass_fail(result1,row["expected_result"])
     result2_pf = pass_fail(result2,row["expected_result"])
     print(result1_pf)
     print(result2_pf)
-    if result1_pf and result2_pf: 
+    if row['sql_qry_2'] == '':
+        if result1_pf:
+            return "Pass"
+        else:
+            return "Fail"
+    elif result1_pf and result2_pf: 
         return "Pass"
     else: 
         return "Fail"
@@ -228,6 +243,8 @@ def pass_fail_create(row):
 def pass_fail(value,condition_str):
     condition_str = str(condition_str)
     if value == 'Query Does not exist' or value == 'Exception error' :
+        return False
+    if value == '':
         return False
     value = int(value)
     if condition_str[0]=='>':
