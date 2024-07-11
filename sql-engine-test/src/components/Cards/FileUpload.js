@@ -64,7 +64,7 @@ export const FileUpload = () => {
           autoComplete="off"
         >
           <label className="mb-1" htmlFor="projectType">
-            Excel file upload
+            Excel File Upload
           </label>
           <label className="custom-file-upload">
             <input

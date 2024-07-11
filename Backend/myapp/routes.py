@@ -42,6 +42,7 @@ def upload_file():
         # Process the file using pandas
         try:
             df = pd.read_excel(file_path)
+            df.dropna()
             df_f10 = df.head(10)
             df_json = df_f10.to_json(orient="records")
             statement = upload_data_pg1(df)
@@ -126,7 +127,7 @@ def pg_2_Db_to_Df ():
     session = db.session()
     try:
         retrieval = session.query(MdSqlqry.qry_name,MdSuite.suite_name,MdSqlqry.sql_qry_1,MdSqlqry.sql_qry_2,MdSqlqry.qry_expected_op).join(MdSuite, MdSqlqry.suite_id== MdSuite.suite_id).all()
-        df = pd.DataFrame(retrieval, columns=['Descritpion','Suite_Name','Query_1','Query_2','Expected_result'])
+        df = pd.DataFrame(retrieval, columns=['Description','Suite_Name','Query_1','Query_2','Expected_result'])
         print(df)
         return df
     finally:
@@ -189,7 +190,10 @@ def submit_selection():
             qry_id=get_qry_id(row['qry_name']),
             sql_qry_1_op=Sf_qry(row['sql_qry_1']),
             sql_qry_2_op=Sf_qry(row['sql_qry_2']),
-            qrn_execn_status=row['qrn_execn_status']
+            qrn_execn_status=row['qrn_execn_status'],
+            sql_qry_1=row['sql_qry_1'],  # Save SQL Query 1
+            sql_qry_2=row['sql_qry_2'],  # Save SQL Query 2
+            expected_op=row['expected_result']  # Save Expected Result
         )
         db.session.add(result_set)
 
@@ -213,16 +217,20 @@ def pass_fail_create(row):
     result2 = Sf_qry(row['sql_qry_2'])
     result1_pf = pass_fail(result1,row["expected_result"])
     result2_pf = pass_fail(result2,row["expected_result"])
+    print(result1_pf)
+    print(result2_pf)
     if result1_pf and result2_pf: 
         return "Pass"
     else: 
         return "Fail"
 
 
-def pass_fail(condition_str,value):
-    if value == 'connector Programming Error' or value == 'Exception error' : 
+def pass_fail(value,condition_str):
+    condition_str = str(condition_str)
+    if value == 'Query Does not exist' or value == 'Exception error' :
         return False
-    if condition_str.startswith(">"):
+    value = int(value)
+    if condition_str[0]=='>':
         threshold = float(condition_str[1:])
         if value > threshold:
             return True
@@ -260,10 +268,10 @@ def Sf_qry(qry):
         result = cursor.fetchone()[0]
         return result
     except snowflake.connector.ProgrammingError:
-        result = 'connector Programming Error'
+        result = 'Query Does not exist'
         return result
     except Exception: 
-        result = 'Exception error'
+        result = Exception
         return result
     finally:
         cursor.close()
@@ -274,18 +282,16 @@ def pg_3_report():
     df = pd.DataFrame() # here there need to be columns created for each (batch_id, qry_name, pass/fail)
     return df 
 
-@main.route('/table1',methods = ['GET'])
+@main.route('/table1', methods=['GET'])
 @cross_origin()
 def table1():
-        # Query MdResultSet and join with related tables to get necessary data
-    result_sets = db.session.query(MdResultSet, MdSqlqry, MdSuite, QueryExecnBatch)\
-            .join(MdSqlqry, MdResultSet.qry_id == MdSqlqry.qry_id)\
-            .join(MdSuite, MdSqlqry.suite_id == MdSuite.suite_id)\
-            .join(QueryExecnBatch, MdResultSet.rs_batch_id == QueryExecnBatch.batch_id)\
-            .add_columns(MdResultSet.qrn_execn_status)\
-            .all()
+    result_sets = db.session.query(MdResultSet, MdSqlqry, MdSuite, QueryExecnBatch) \
+        .join(MdSqlqry, MdResultSet.qry_id == MdSqlqry.qry_id) \
+        .join(MdSuite, MdSqlqry.suite_id == MdSuite.suite_id) \
+        .join(QueryExecnBatch, MdResultSet.rs_batch_id == QueryExecnBatch.batch_id) \
+        .add_columns(MdResultSet.qrn_execn_status, MdResultSet.sql_qry_1, MdResultSet.sql_qry_2, MdResultSet.expected_op) \
+        .all()
 
-        # Create lists to store data
     suite_names = []
     run_dates = []
     batch_ids = []
@@ -293,20 +299,18 @@ def table1():
     pass_counts = []
     fail_counts = []
 
-        # Iterate through result_sets and calculate counts and percentages
-    for result_set, sql_qry, suite, batch, qrn_execn_status in result_sets:
-            suite_names.append(suite.suite_name)
-            run_dates.append(batch.batch_start_dt.strftime('%d-%b'))
-            batch_ids.append(batch.batch_id)  # Assuming you want only day and month
-            total_counts.append(1)  # Each row represents one query execution
-            if qrn_execn_status == 'pass':
-                pass_counts.append(1)
-                fail_counts.append(0)
-            else:
-                pass_counts.append(0)
-                fail_counts.append(1)
+    for result_set, sql_qry, suite, batch, qrn_execn_status, sql_qry_1, sql_qry_2, expected_op in result_sets:
+        suite_names.append(suite.suite_name)
+        run_dates.append(batch.batch_start_dt.strftime('%Y-%m-%d %H:%M:%S'))
+        batch_ids.append(batch.batch_id)
+        total_counts.append(1)
+        if qrn_execn_status == 'Pass':
+            pass_counts.append(1)
+            fail_counts.append(0)
+        else:
+            pass_counts.append(0)
+            fail_counts.append(1)
 
-    # Create DataFrame from collected lists
     df = pd.DataFrame({
         'Suite Name': suite_names,
         'Run Date': run_dates,
@@ -316,41 +320,107 @@ def table1():
         'Fail Count': fail_counts
     })
 
-    # Group by Suite_name and Run_Date to calculate aggregates
-    grouped_df = df.groupby(['Batch Id','Suite Name','Run Date']).agg({
+    grouped_df = df.groupby(['Batch Id', 'Suite Name', 'Run Date']).agg({
         'Total Count': 'sum',
         'Pass Count': 'sum',
         'Fail Count': 'sum'
     }).reset_index()
 
-    # Calculate Pass Percentage and Fail Percentage
     grouped_df['Pass Percentage'] = (grouped_df['Pass Count'] / grouped_df['Total Count']) * 100
     grouped_df['Fail Percentage'] = (grouped_df['Fail Count'] / grouped_df['Total Count']) * 100
-
-    # Drop unnecessary columns if needed (like rs_id and qry_id)
-    grouped_df = grouped_df.drop(columns=['rs_id', 'qry_id'], errors='ignore')
+    grouped_df = grouped_df.drop(columns=['rs_id', 'qry_id','Batch Id'], errors='ignore')
     grouped_df = grouped_df.iloc[::-1]
     table = grouped_df.to_json(orient="records")
     return jsonify({"data": table})
 
-@main.route('/table2', methods = ['GET'])
+@main.route('/table2', methods=['GET'])
 @cross_origin()
-def table2(): 
-        subquery = db.session.query(func.max(QueryExecnBatch.batch_id).label('max_batch_id')).subquery()
+def table2():
+    subquery = db.session.query(func.max(QueryExecnBatch.batch_id).label('max_batch_id')).subquery()
+    result_sets = db.session.query(
+        MdSqlqry.qry_name.label('Query Name'),
+        MdSuite.suite_name.label('Suite Name'),
+        MdResultSet.sql_qry_1_op.label('SQL Query 1 Output'),
+        MdResultSet.sql_qry_2_op.label('SQL Query 2 Output'),
+        MdResultSet.qrn_execn_status.label('Query Execution Status'),
+        MdResultSet.sql_qry_1.label('SQL Query 1 Name'),
+        MdResultSet.sql_qry_2.label('SQL Query 2 Name'),
+        QueryExecnBatch.batch_start_dt.label('Batch Start Time'),
+        QueryExecnBatch.batch_end_dt.label('Batch End Time'),
+        MdResultSet.expected_op.label('Expected Result')
+    ).join(MdSqlqry, MdResultSet.qry_id == MdSqlqry.qry_id) \
+        .join(MdSuite, MdSqlqry.suite_id == MdSuite.suite_id) \
+        .join(QueryExecnBatch, MdResultSet.rs_batch_id == QueryExecnBatch.batch_id) \
+        .all()
 
-        # Query to fetch MdResultSet with the latest batch_id and join with related tables
-        result_sets = db.session.query(MdSqlqry.qry_name, MdSuite.suite_name, MdResultSet.sql_qry_1_op, MdResultSet.sql_qry_2_op, MdResultSet.qrn_execn_status)\
-            .join(MdSqlqry, MdResultSet.qry_id == MdSqlqry.qry_id)\
-            .join(MdSuite, MdSqlqry.suite_id == MdSuite.suite_id)\
-            .join(QueryExecnBatch, MdResultSet.rs_batch_id == QueryExecnBatch.batch_id)\
-            .filter(QueryExecnBatch.batch_id == subquery.c.max_batch_id)\
-            .all()
-        for result_set in result_sets:
-            print(result_set)  # This will help you see what data is retrieved
-        # Create DataFrame from the query result, excluding rs_id
-        df = pd.DataFrame(result_sets, columns=['Query Name', 'Suite Name', 'SQL Query 1 Output', 'SQL Query 2 Output', 'Query Execution Status'])
+    df = pd.DataFrame(result_sets, columns=[
+        'Query Description', 'Suite Name', 'SQL Query 1 Output', 'SQL Query 2 Output',
+        'Query Execution Status', 'SQL Query 1 Name', 'SQL Query 2 Name',
+        'Batch Start Time', 'Batch End Time', 'Expected Result'
+    ])
+    df = df[['Suite Name', 'Query Description', 'SQL Query 1 Name', 'SQL Query 2 Name',
+             'SQL Query 1 Output', 'SQL Query 2 Output', 'Expected Result',
+             'Query Execution Status', 'Batch Start Time', 'Batch End Time']]
+    df['Batch Start Time'] = pd.to_datetime(df['Batch Start Time']).dt.strftime('%Y-%m-%d %H:%M:%S')
+    df['Batch End Time'] = pd.to_datetime(df['Batch End Time']).dt.strftime('%Y-%m-%d %H:%M:%S')
+    df = df.iloc[::-1]
+    table = df.to_json(orient="records")
+    return jsonify({"data": table}), 200
 
-        # Convert DataFrame to JSON and return as response
-        table = df.to_json(orient="records")
-        return jsonify({"data": table}), 200
+@main.route('/addSuite', methods=['POST'])
+@cross_origin()
+def insert_suite():
+    data = request.get_json()
+    if not data or 'suite_name' not in data or 'suite_description' not in data or 'suite_created_by' not in data:
+        return jsonify({"error": "Invalid data"}), 400
+    suite_name = data['suite_name']
+    suite_description = data['suite_description']
+    suite_created_by = data['suite_created_by']
+ 
+    existing_suite = db.session.query(MdSuite).filter_by(suite_name=suite_name).first()
+    if existing_suite:
+        return jsonify({"error": "Suite with this name already exists"}), 400
 
+    # Get the maximum suite_id and increment by 1
+    max_suite_id = db.session.query(db.func.max(MdSuite.suite_id)).scalar()
+    new_suite_id = max_suite_id + 1 if max_suite_id else 1
+    # Create a new MdSuite instance with default values
+    new_suite = MdSuite(
+        suite_id= new_suite_id,
+        suite_name=suite_name,
+        suite_description=suite_description,
+        suite_created_by=suite_created_by,
+        suite_priority=None,
+        suite_created_dt=datetime.now(),
+        suite_modified_dt=None
+    )
+    db.session.add(new_suite)
+    try:
+        db.session.commit()
+        return jsonify({"success": True}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
+
+@main.route('/getSuite', methods=['GET'])
+@cross_origin()
+def get_suites():
+    try:
+        # Query all records from the MdSuite table
+        suites = MdSuite.query.all()
+        # Convert the records into a list of dictionaries
+        suite_list = [{
+            'suite_id': suite.suite_id,
+            'suite_name': suite.suite_name,
+            'suite_description':suite.suite_description,
+            'suite_created_by':suite.suite_created_by,
+            "suite_priority":suite.suite_priority,
+            'suite_created_dt': suite.suite_created_dt,
+            'suite_modified_dt': suite.suite_modified_dt
+        } for suite in suites]
+        # Return the list as a JSON response
+        suite_list.sort(key=lambda x: x['suite_id'], reverse=True)
+        return jsonify({"data": suite_list}), 200
+    except Exception as e:
+        # Handle any errors that occur during the query
+        return jsonify({"error": str(e)}), 500
