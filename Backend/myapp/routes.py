@@ -44,7 +44,7 @@ def upload_file():
             df = pd.read_excel(file_path)
             df.dropna(subset=['Query_1'])
             df = df.fillna('')
-            df = df.drop_duplicates()
+            df = df.drop_duplicates(subset=['Suite_Name','Description','Query_1','Query_2','Query_1_DB','Query_2_DB','Expected_Result'])
             df_f10 = df.head(10)
             df_json = df_f10.to_json(orient="records")
             statement = upload_data_pg1(df)
