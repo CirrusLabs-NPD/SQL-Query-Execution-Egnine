@@ -44,6 +44,7 @@ def upload_file():
             df = pd.read_excel(file_path)
             df.dropna(subset=['Query_1'])
             df = df.fillna('')
+            df = df.drop_duplicates()
             df_f10 = df.head(10)
             df_json = df_f10.to_json(orient="records")
             statement = upload_data_pg1(df)
@@ -245,6 +246,9 @@ def pass_fail(value,condition_str):
     if value == 'Query Does not exist' or value == 'Exception error' :
         return False
     if value == '':
+        return False
+    if type(value) == str:
+        print(value)
         return False
     value = int(value)
     if condition_str[0]=='>':
