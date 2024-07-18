@@ -276,9 +276,9 @@ def pass_fail(value,condition_str):
 def Sf_qry(qry):
         
     conn = snowflake.connector.connect(
-        user='RAGHAVAGARWALLA',
-        password='Dvcn8288--',
-        account='mg07208.central-india.azure',
+        user='CL1NARESH',
+        password='1SQLupload',
+        account='sg85113.central-india.azure',
         warehouse='COMPUTE_WH',
         database='CLTEST',
         schema='PUBLIC'
