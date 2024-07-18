@@ -277,24 +277,32 @@ def pass_fail(value,condition_str):
 # snow flake query function
 def Sf_qry(qry):
         
-    conn = snowflake.connector.connect(
-        user='CL1NARESH',
-        password='1SQLupload',
-        account='sg85113.central-india.azure',
-        warehouse='COMPUTE_WH',
-        database='CLTEST',
-        schema='PUBLIC'
-    )
+    connection_string = "snowflake://CL1NARESH:1SQLupload@sg85113.central-india.azure/CLTEST/PUBLIC?warehouse=COMPUTE_WH"
+
+    # Parse the connection string and extract the necessary components
+    pattern = re.compile(
+        r'snowflake://(?P<user>[^:]+):(?P<password>[^@]+)@(?P<account>[^/]+)/(?P<database>[^/]+)/(?P<schema>[^?]+)\?warehouse=(?P<warehouse>.+)')
+    match = pattern.match(connection_string)
+
+    if match:
+        conn = snowflake.connector.connect(
+            user=match.group('user'),
+            password=match.group('password'),
+            account=match.group('account'),
+            database=match.group('database'),
+            schema=match.group('schema'),
+            warehouse=match.group('warehouse')
+        )   
     cursor = conn.cursor()
     try: 
         cursor.execute(qry)
         result = cursor.fetchone()[0]
         return result
     except snowflake.connector.ProgrammingError:
-        result = 'Query Does not exist'
+        result = 'Query Does Not Exist'
         return result
-    except Exception: 
-        result = Exception
+    except Exception as e: 
+        result = str(e)
         return result
     finally:
         cursor.close()
@@ -320,11 +328,11 @@ def My_sql_qry(qry):
         cursor.execute(qry)
         result = cursor.fetchone()[0]
         return result
-    except snowflake.connector.ProgrammingError:
-        result = 'Query Does not exist'
+    except mysql.connector.ProgrammingError:
+        result = 'Query Does Not Exist'
         return result
-    except Exception: 
-        result = Exception
+    except Exception as e: 
+        result = str(e)
         return result
     finally:
         cursor.close()
