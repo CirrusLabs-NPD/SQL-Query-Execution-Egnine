@@ -190,7 +190,6 @@ def submit_selection():
     for index, row in combined_df.iterrows():
         result_1 = Sf_qry(row['sql_qry_1'])
         if row['sql_qry_2'] == '': 
-            print('fail not here')
             result_2 = ''
         else: 
             result_2 = Sf_qry(row['sql_qry_2'])
@@ -277,7 +276,7 @@ def pass_fail(value,condition_str):
 # snow flake query function
 def Sf_qry(qry):
         
-    connection_string = "snowflake://CL1NARESH:1SQLupload@sg85113.central-india.azure/CLTEST/PUBLIC?warehouse=COMPUTE_WH"
+    connection_string = "snowflake://CL1NARESH:1SQLupload@sg85113.central-india.azure/CL_TEST/PUBLIC?warehouse=COMPUTE_WH"
 
     # Parse the connection string and extract the necessary components
     pattern = re.compile(
