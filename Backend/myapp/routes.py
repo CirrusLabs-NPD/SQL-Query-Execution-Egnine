@@ -14,6 +14,8 @@ import pandas as pd
 import random
 import snowflake.connector
 from sqlalchemy import desc, func
+import mysql.connector 
+import re
 
 main = Blueprint('main', __name__)
 bcrypt = Bcrypt()
@@ -188,7 +190,6 @@ def submit_selection():
     for index, row in combined_df.iterrows():
         result_1 = Sf_qry(row['sql_qry_1'])
         if row['sql_qry_2'] == '': 
-            print('fail not here')
             result_2 = ''
         else: 
             result_2 = Sf_qry(row['sql_qry_2'])
@@ -272,31 +273,73 @@ def pass_fail(value,condition_str):
     else:
         return False
 
-
+# snow flake query function
 def Sf_qry(qry):
         
-    conn = snowflake.connector.connect(
-        user='CL1NARESH',
-        password='1SQLupload',
-        account='sg85113.central-india.azure',
-        warehouse='COMPUTE_WH',
-        database='CL_TEST',
-        schema='PUBLIC'
-    )
+    connection_string = "snowflake://CL1NARESH:1SQLupload@sg85113.central-india.azure/CL_TEST/PUBLIC?warehouse=COMPUTE_WH"
+
+    # Parse the connection string and extract the necessary components
+    pattern = re.compile(
+        r'snowflake://(?P<user>[^:]+):(?P<password>[^@]+)@(?P<account>[^/]+)/(?P<database>[^/]+)/(?P<schema>[^?]+)\?warehouse=(?P<warehouse>.+)')
+    match = pattern.match(connection_string)
+
+    if match:
+        conn = snowflake.connector.connect(
+            user=match.group('user'),
+            password=match.group('password'),
+            account=match.group('account'),
+            database=match.group('database'),
+            schema=match.group('schema'),
+            warehouse=match.group('warehouse')
+        )   
+     
     cursor = conn.cursor()
     try: 
         cursor.execute(qry)
         result = cursor.fetchone()[0]
         return result
     except snowflake.connector.ProgrammingError:
-        result = 'Query Does not exist'
+        result = 'Query Does Not Exist'
         return result
-    except Exception: 
-        result = Exception
+    except Exception as e: 
+        result = str(e)
         return result
     finally:
         cursor.close()
         conn.close()
+
+
+def My_sql_qry(qry):
+    connection_string = "mysql://avnadmin:AVNS_Z-En5yCZDiVyP6Wd52e@sql-engine-mysql-raghav2761-1c8d.i.aivencloud.com:11788/defaultdb?ssl-mode=REQUIRED"
+    pattern = re.compile(r'mysql\+mysqlconnector://(?P<user>[^:]+):(?P<password>[^@]+)@(?P<host>[^:]+):(?P<port>\d+)/(?P<database>.+)')
+    match = pattern.match(connection_string)
+
+    if match:
+        conn = mysql.connector.connect(
+            host=match.group('host'),
+            user=match.group('user'),
+            password=match.group('password'),
+            database=match.group('database'),
+            port=match.group('port')
+        )
+
+    cursor = conn.cursor()
+    try: 
+        cursor.execute(qry)
+        result = cursor.fetchone()[0]
+        return result
+    except mysql.connector.ProgrammingError:
+        result = 'Query Does Not Exist'
+        return result
+    except Exception as e: 
+        result = str(e)
+        return result
+    finally:
+        cursor.close()
+        conn.close()
+
+ 
+
 
 def pg_3_report():
     retrieval = session.query().all()
