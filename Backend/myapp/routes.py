@@ -292,6 +292,7 @@ def Sf_qry(qry):
             schema=match.group('schema'),
             warehouse=match.group('warehouse')
         )   
+     
     cursor = conn.cursor()
     try: 
         cursor.execute(qry)
