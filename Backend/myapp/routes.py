@@ -280,7 +280,7 @@ def Sf_qry(qry):
         password='1SQLupload',
         account='sg85113.central-india.azure',
         warehouse='COMPUTE_WH',
-        database='CLTEST',
+        database='CL_TEST',
         schema='PUBLIC'
     )
     cursor = conn.cursor()
