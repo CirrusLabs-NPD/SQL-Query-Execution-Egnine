@@ -1,20 +1,19 @@
-# from flask import Flask, Blueprint, jsonify, redirect, url_for ,request ,make_response ,redirect_template , session
 from flask import Flask, Blueprint, jsonify, redirect, url_for, request, make_response, session
-from datetime import datetime , timedelta
+from datetime import datetime, timedelta
 from .extensions import db
-from .models import MdDatabase, MdDbConfig ,MdPrivs ,MdResultSet ,MdRole ,MdSqlqry ,MdSuite ,User, QueryExecnBatch
+from .models import MdDatabase, MdDbConfig, MdPrivs, MdResultSet, MdRole, MdSqlqry, MdSuite, User, QueryExecnBatch
 import requests
 from flask_bcrypt import Bcrypt  
-from flask_cors import CORS , cross_origin  # Import CORS
+from flask_cors import CORS, cross_origin
 from sqlalchemy.orm.exc import NoResultFound
 import json
-from flask_jwt_extended import create_access_token, jwt_required ,get_jwt_identity
+from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 import os
-import pandas as pd 
+import pandas as pd
 import random
 import snowflake.connector
 from sqlalchemy import desc, func
-import mysql.connector 
+import mysql.connector
 import re
 
 main = Blueprint('main', __name__)
@@ -29,6 +28,18 @@ CORS(main, resources={r"/*": {"origins": allowed_origins}}, supports_credentials
 UPLOAD_FOLDER = 'uploads'
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
+
+# Define a dictionary to map database names to query execution functions
+DB_QUERY_FUNCTIONS = {
+    "Snowflake": "Sf_qry",
+    "MySQL": "My_sql_qry"
+}
+
+def execute_query(db_name, query):
+    if db_name in DB_QUERY_FUNCTIONS:
+        return globals()[DB_QUERY_FUNCTIONS[db_name]](query)
+    else:
+        return 'Unsupported database name'
 
 @main.route('/upload', methods=['POST'])
 @cross_origin()
@@ -46,21 +57,18 @@ def upload_file():
             df = pd.read_excel(file_path)
             df.dropna(subset=['Query_1'])
             df = df.fillna('')
-            df = df.drop_duplicates(subset=['Suite_Name','Description','Query_1','Query_2','Query_1_DB','Query_2_DB','Expected_Result'])
+            df = df.drop_duplicates(subset=['Suite_Name', 'Description', 'Query_1', 'Query_2', 'Query_1_DB', 'Query_2_DB', 'Expected_Result'])
             df_f10 = df.head(10)
             df_json = df_f10.to_json(orient="records")
             statement = upload_data_pg1(df)
 
-            # Do something with the dataframe (e.g., print or process)
-            return jsonify({"message": statement,
-                            "data": df_json}), 200
+            return jsonify({"message": statement, "data": df_json}), 200
         except Exception as e:
             return jsonify({"error": str(e)}), 500
-        
-def upload_data_pg1 (df): 
+
+def upload_data_pg1(df):
     current_time = datetime.now()
     
-    # Iterate over DataFrame rows
     for index, row in df.iterrows():
         qry_name = row['Description']
         sql_qry_1 = row['Query_1']
@@ -77,19 +85,16 @@ def upload_data_pg1 (df):
         if suite:
             suite_id = suite.suite_id
         else:
-            suite_id = None  # Handle the case where the suite is not found
+            suite_id = None
 
-        
         existing_qry = MdSqlqry.query.filter_by(qry_name=qry_name).first()
 
         if existing_qry:
-        # Update existing record
             existing_qry.sql_qry_1 = sql_qry_1
             existing_qry.sql_qry_2 = sql_qry_2
             existing_qry.suite_id = suite_id
             existing_qry.modified_dt = current_time
         else:
-            # Create a new record
             new_qry = MdSqlqry(
                 qry_name=qry_name,
                 sql_qry_1=sql_qry_1,
@@ -102,58 +107,18 @@ def upload_data_pg1 (df):
                 modified_dt=current_time
             )
             db.session.add(new_qry)
-
-            # Create a new record
-        # new_qry = MdSqlqry(
-        #     qry_name=qry_name,
-        #     sql_qry_1=sql_qry_1,
-        #     sql_qry_2=sql_qry_2,
-        #     suite_id=suite_id,
-        #     sql_qry1_db_id=sql_qry1_db_id,
-        #     sql_qry2_db_id=sql_qry2_db_id,
-        #     qry_expected_op=qry_expected_op,
-        #     created_dt=current_time,
-        #     modified_dt=current_time
-        # )
-        # db.session.add(new_qry)
     
     db.session.commit()
 
     return 'Data inserted or updated successfully'
-        
-# sample dataframes for test purposes, to be replaced by data from PG or pd.read_excel 
-# note import from backedn as one single df, will write code to auto split it here
-# couldn't run due to Pg issue, need help in actually running the code
-
-
-
-def pg_2_Db_to_Df ():
-    session = db.session()
-    try:
-        retrieval = session.query(MdSqlqry.qry_name,MdSuite.suite_name,MdSqlqry.sql_qry_1,MdSqlqry.sql_qry_2,MdSqlqry.qry_expected_op).join(MdSuite, MdSqlqry.suite_id== MdSuite.suite_id).all()
-        df = pd.DataFrame(retrieval, columns=['Description','Suite_Name','Query_1','Query_2','Expected_result'])
-        print(df)
-        return df
-    finally:
-        session.close()
-
-@main.route('/get_data', methods=['GET'])
-@cross_origin()
-def get_dataframes():
-    df = pg_2_Db_to_Df()
-    table = df.to_json(orient='records')
-    return jsonify({"data": json.loads(table)})
 
 @main.route('/submit_selection', methods=['POST'])
 @cross_origin()
 def submit_selection():
-
-    data = request.get_json()  # Get the JSON data sent to the endpoint
-
+    data = request.get_json()
     if not data or 'tables' not in data:
         return jsonify({"error": "Invalid data"}), 400
 
-    # Combine all the dataframes from different suites into a single dataframe
     dfs = []
     for table in data['tables']:
         df = pd.DataFrame(table['values'])
@@ -161,20 +126,25 @@ def submit_selection():
 
     combined_df = pd.concat(dfs, ignore_index=True)
     
-    # You can now process this combined_df as needed
-    combined_df.rename(columns={'column_0':'qry_name',
-                                'column_1':'expected_result',
-                                'column_2':'sql_qry_1',
-                                'column_3':'sql_qry_2',
-                                'column_4':'Suite_Name'},inplace=True)
+    combined_df.rename(columns={
+        'column_0': 'qry_name',
+        'column_1': 'expected_result',
+        'column_2': 'sql_qry_1',
+        'column_3': 'sql_qry_2',
+        'column_4': 'Suite_Name'
+    }, inplace=True)
+    
     combined_df['qry_name'] = combined_df['qry_name'].astype(str)
     combined_df['expected_result'] = combined_df['expected_result'].astype(str)
     combined_df['sql_qry_1'] = combined_df['sql_qry_1'].astype(str)
     combined_df['sql_qry_2'] = combined_df['sql_qry_2'].astype(str)
     combined_df['Suite_Name'] = combined_df['Suite_Name'].astype(str)
+    
     if 'sql_qry_1' not in combined_df.columns or 'sql_qry_2' not in combined_df.columns:
         return jsonify({"error": "'sql_qry_1' or 'sql_qry_2' column not found"}), 400
+    
     combined_df["qrn_execn_status"] = combined_df.apply(pass_fail_create, axis=1)
+    
     batch = QueryExecnBatch(
         batch_dt=datetime.now(),
         batch_start_dt=datetime.now(),
@@ -184,25 +154,22 @@ def submit_selection():
     db.session.add(batch)
     db.session.commit()
 
-    batch_id = batch.batch_id  # Get the ID of the newly created batch
+    batch_id = batch.batch_id
 
-    # Process each row in the DataFrame to create MdResultSet records
     for index, row in combined_df.iterrows():
-        result_1 = Sf_qry(row['sql_qry_1'])
-        if row['sql_qry_2'] == '': 
-            result_2 = ''
-        else: 
-            result_2 = Sf_qry(row['sql_qry_2'])
-        # Create MdResultSet record
+        qry_id, db_name1, db_name2 = get_qry_id_and_db_names(row['qry_name'])
+        result_1 = execute_query(db_name1, row['sql_qry_1'])
+        result_2 = execute_query(db_name2, row['sql_qry_2']) if row['sql_qry_2'] else ''
+        
         result_set = MdResultSet(
             rs_batch_id=batch_id,
-            qry_id=get_qry_id(row['qry_name']),
+            qry_id=qry_id,
             sql_qry_1_op=result_1,
             sql_qry_2_op=result_2,
             qrn_execn_status=row['qrn_execn_status'],
-            sql_qry_1=row['sql_qry_1'],  # Save SQL Query 1
-            sql_qry_2=row['sql_qry_2'],  # Save SQL Query 2
-            expected_op=row['expected_result']  # Save Expected Result
+            sql_qry_1=row['sql_qry_1'],
+            sql_qry_2=row['sql_qry_2'],
+            expected_op=row['expected_result']
         )
         db.session.add(result_set)
 
@@ -213,72 +180,89 @@ def submit_selection():
         db.session.rollback()
         return jsonify({"error": str(e)}), 500
 
-def get_qry_id(qry_name):
-    # Function to retrieve qry_id from MdSqlqry based on qry_name
+def get_qry_id_and_db_names(qry_name):
     qry = MdSqlqry.query.filter_by(qry_name=qry_name).first()
     if qry:
-        return qry.qry_id
+        db_name1 = MdDatabase.query.filter_by(db_id=qry.sql_qry1_db_id).first().db_name
+        db_name2 = MdDatabase.query.filter_by(db_id=qry.sql_qry2_db_id).first().db_name
+        return qry.qry_id, db_name1, db_name2
     else:
-        return None  # Handle the case where qry_name is not found in MdSqlqry
+        return None, None, None
 
 def pass_fail_create(row):
-    result1 = Sf_qry(row['sql_qry_1'])
-    if row['sql_qry_2'] == '':
-        result2 = ''
+    qry_id, db_name1, db_name2 = get_qry_id_and_db_names(row['qry_name'])
+    result1 = execute_query(db_name1, row['sql_qry_1'])
+    result2 = execute_query(db_name2, row['sql_qry_2']) if row['sql_qry_2'] else ''
+
+    if any(comp in row['expected_result'] for comp in ['aggregate_compare', 'structure_compare', 'sample_rows_compare']):
+        condition_str = row['expected_result'].split(':')[1]
+        pass_fail_status = pass_fail(result1, result2, condition_str)
     else:
-        result2 = Sf_qry(row['sql_qry_2'])
-    result1_pf = pass_fail(result1,row["expected_result"])
-    result2_pf = pass_fail(result2,row["expected_result"])
-    print(result1_pf)
-    print(result2_pf)
-    if row['sql_qry_2'] == '':
-        if result1_pf:
-            return "Pass"
-        else:
-            return "Fail"
-    elif result1_pf and result2_pf: 
-        return "Pass"
-    else: 
-        return "Fail"
+        result1_pf = pass_fail(result1, result1, row["expected_result"])
+        result2_pf = pass_fail(result2, result2, row["expected_result"])
+        pass_fail_status = result1_pf and result2_pf if row['sql_qry_2'] else result1_pf
+    
+    return "Pass" if pass_fail_status else "Fail"
 
+def pass_fail(value1, value2, condition_str):
+    # Handle special cases based on the condition string
+    if condition_str == 'aggregate_compare':
+        return compare_aggregate(value1, value2)
+    elif condition_str == 'structure_compare':
+        return compare_structure(value1, value2)
+    elif condition_str == 'sample_rows_compare':
+        return compare_sample_rows(value1, value2)
+    
+    # Original comparison logic
+    if value1 in ['Query Does not exist', 'Exception error', ''] or value2 in ['Query Does not exist', 'Exception error', '']:
+        return False
+    if isinstance(value1, str) or isinstance(value2, str):
+        return False
 
-def pass_fail(value,condition_str):
-    condition_str = str(condition_str)
-    if value == 'Query Does not exist' or value == 'Exception error' :
-        return False
-    if value == '':
-        return False
-    if type(value) == str:
-        print(value)
-        return False
-    value = int(value)
-    if condition_str[0]=='>':
+    value1 = int(value1)
+    value2 = int(value2)
+
+    if condition_str.startswith(">"):
         threshold = float(condition_str[1:])
-        if value > threshold:
-            return True
-        else:
-            return False
+        return value1 > threshold
     elif condition_str.startswith("<"):
         threshold = float(condition_str[1:])
-        if value < threshold:
-            return True
-        else:
-            return False
+        return value1 < threshold
     elif condition_str.startswith("=="):
         target = float(condition_str[2:])
-        if value == target:
-            return True
-        else:
-            return False
+        return value1 == target
     else:
         return False
 
-# snow flake query function
-def Sf_qry(qry):
-        
-    connection_string = "snowflake://CL1NARESH:1SQLupload@sg85113.central-india.azure/CL_TEST/PUBLIC?warehouse=COMPUTE_WH"
+def compare_aggregate(value1, value2):
+    # Assuming value1 and value2 are lists of dictionaries with aggregated data
+    if not value1 or not value2:
+        return False
+    
+    aggregate1 = sum(item['value'] for item in value1)
+    aggregate2 = sum(item['value'] for item in value2)
+    
+    return aggregate1 == aggregate2
 
-    # Parse the connection string and extract the necessary components
+def compare_structure(value1, value2):
+    # Assuming value1 and value2 are lists of column names
+    if not value1 or not value2:
+        return False
+    
+    return set(value1) == set(value2)
+
+def compare_sample_rows(value1, value2):
+    # Assuming value1 and value2 are lists of dictionaries representing rows
+    if not value1 or not value2:
+        return False
+
+    sample1 = value1[:4]  # Get the first 4 rows from value1
+    sample2 = value2[:4]  # Get the first 4 rows from value2
+    
+    return sample1 == sample2
+
+def Sf_qry(qry):
+    connection_string = "snowflake://CL1NARESH:1SQLupload@sg85113.central-india.azure/CL_TEST/PUBLIC?warehouse=COMPUTE_WH"
     pattern = re.compile(
         r'snowflake://(?P<user>[^:]+):(?P<password>[^@]+)@(?P<account>[^/]+)/(?P<database>[^/]+)/(?P<schema>[^?]+)\?warehouse=(?P<warehouse>.+)')
     match = pattern.match(connection_string)
@@ -291,23 +275,20 @@ def Sf_qry(qry):
             database=match.group('database'),
             schema=match.group('schema'),
             warehouse=match.group('warehouse')
-        )   
-     
+        )
+    
     cursor = conn.cursor()
-    try: 
+    try:
         cursor.execute(qry)
         result = cursor.fetchone()[0]
         return result
     except snowflake.connector.ProgrammingError:
-        result = 'Query Does Not Exist'
-        return result
-    except Exception as e: 
-        result = str(e)
-        return result
+        return 'Query Does Not Exist'
+    except Exception as e:
+        return str(e)
     finally:
         cursor.close()
         conn.close()
-
 
 def My_sql_qry(qry):
     connection_string = "mysql://avnadmin:AVNS_Z-En5yCZDiVyP6Wd52e@sql-engine-mysql-raghav2761-1c8d.i.aivencloud.com:11788/defaultdb?ssl-mode=REQUIRED"
@@ -324,27 +305,33 @@ def My_sql_qry(qry):
         )
 
     cursor = conn.cursor()
-    try: 
+    try:
         cursor.execute(qry)
         result = cursor.fetchone()[0]
         return result
     except mysql.connector.ProgrammingError:
-        result = 'Query Does Not Exist'
-        return result
-    except Exception as e: 
-        result = str(e)
-        return result
+        return 'Query Does Not Exist'
+    except Exception as e:
+        return str(e)
     finally:
         cursor.close()
         conn.close()
 
- 
+def pg_2_Db_to_Df():
+    session = db.session()
+    try:
+        retrieval = session.query(MdSqlqry.qry_name, MdSuite.suite_name, MdSqlqry.sql_qry_1, MdSqlqry.sql_qry_2, MdSqlqry.qry_expected_op).join(MdSuite, MdSqlqry.suite_id == MdSuite.suite_id).all()
+        df = pd.DataFrame(retrieval, columns=['Description', 'Suite_Name', 'Query_1', 'Query_2', 'Expected_result'])
+        return df
+    finally:
+        session.close()
 
-
-def pg_3_report():
-    retrieval = session.query().all()
-    df = pd.DataFrame() # here there need to be columns created for each (batch_id, qry_name, pass/fail)
-    return df 
+@main.route('/get_data', methods=['GET'])
+@cross_origin()
+def get_dataframes():
+    df = pg_2_Db_to_Df()
+    table = df.to_json(orient='records')
+    return jsonify({"data": json.loads(table)})
 
 @main.route('/table1', methods=['GET'])
 @cross_origin()
@@ -392,7 +379,7 @@ def table1():
 
     grouped_df['Pass Percentage'] = (grouped_df['Pass Count'] / grouped_df['Total Count']) * 100
     grouped_df['Fail Percentage'] = (grouped_df['Fail Count'] / grouped_df['Total Count']) * 100
-    grouped_df = grouped_df.drop(columns=['rs_id', 'qry_id','Batch Id'], errors='ignore')
+    grouped_df = grouped_df.drop(columns=['rs_id', 'qry_id', 'Batch Id'], errors='ignore')
     grouped_df = grouped_df.iloc[::-1]
     table = grouped_df.to_json(orient="records")
     return jsonify({"data": table})
@@ -445,10 +432,9 @@ def insert_suite():
     if existing_suite:
         return jsonify({"error": "Suite with this name already exists"}), 400
 
-    # Get the maximum suite_id and increment by 1
     max_suite_id = db.session.query(db.func.max(MdSuite.suite_id)).scalar()
     new_suite_id = max_suite_id + 1 if max_suite_id else 1
-    # Create a new MdSuite instance with default values
+
     new_suite = MdSuite(
         suite_id= new_suite_id,
         suite_name=suite_name,
@@ -470,23 +456,17 @@ def insert_suite():
 @cross_origin()
 def get_suites():
     try:
-        # Query all records from the MdSuite table
         suites = MdSuite.query.all()
-        # Convert the records into a list of dictionaries
         suite_list = [{
             'suite_id': suite.suite_id,
             'suite_name': suite.suite_name,
-            'suite_description':suite.suite_description,
-            'suite_created_by':suite.suite_created_by,
-            "suite_priority":suite.suite_priority,
+            'suite_description': suite.suite_description,
+            'suite_created_by': suite.suite_created_by,
+            "suite_priority": suite.suite_priority,
             'suite_created_dt': suite.suite_created_dt,
             'suite_modified_dt': suite.suite_modified_dt
         } for suite in suites]
-        # Return the list as a JSON response
         suite_list.sort(key=lambda x: x['suite_id'], reverse=True)
         return jsonify({"data": suite_list}), 200
     except Exception as e:
-        # Handle any errors that occur during the query
         return jsonify({"error": str(e)}), 500
-    
-    #test changes 
