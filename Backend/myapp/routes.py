@@ -42,7 +42,9 @@ def upload_file():
         # Process the file using pandas
         try:
             df = pd.read_excel(file_path)
-            df.dropna()
+            df.dropna(subset=['Query_1'])
+            df = df.fillna('')
+            df = df.drop_duplicates(subset=['Suite_Name','Description','Query_1','Query_2','Query_1_DB','Query_2_DB','Expected_Result'])
             df_f10 = df.head(10)
             df_json = df_f10.to_json(orient="records")
             statement = upload_data_pg1(df)
@@ -184,12 +186,18 @@ def submit_selection():
 
     # Process each row in the DataFrame to create MdResultSet records
     for index, row in combined_df.iterrows():
+        result_1 = Sf_qry(row['sql_qry_1'])
+        if row['sql_qry_2'] == '': 
+            print('fail not here')
+            result_2 = ''
+        else: 
+            result_2 = Sf_qry(row['sql_qry_2'])
         # Create MdResultSet record
         result_set = MdResultSet(
             rs_batch_id=batch_id,
             qry_id=get_qry_id(row['qry_name']),
-            sql_qry_1_op=Sf_qry(row['sql_qry_1']),
-            sql_qry_2_op=Sf_qry(row['sql_qry_2']),
+            sql_qry_1_op=result_1,
+            sql_qry_2_op=result_2,
             qrn_execn_status=row['qrn_execn_status'],
             sql_qry_1=row['sql_qry_1'],  # Save SQL Query 1
             sql_qry_2=row['sql_qry_2'],  # Save SQL Query 2
@@ -214,20 +222,36 @@ def get_qry_id(qry_name):
 
 def pass_fail_create(row):
     result1 = Sf_qry(row['sql_qry_1'])
-    result2 = Sf_qry(row['sql_qry_2'])
+    if row['sql_qry_2'] == '':
+        result2 = ''
+    else:
+        result2 = Sf_qry(row['sql_qry_2'])
     result1_pf = pass_fail(result1,row["expected_result"])
     result2_pf = pass_fail(result2,row["expected_result"])
-    if result1_pf and result2_pf: 
+    print(result1_pf)
+    print(result2_pf)
+    if row['sql_qry_2'] == '':
+        if result1_pf:
+            return "Pass"
+        else:
+            return "Fail"
+    elif result1_pf and result2_pf: 
         return "Pass"
     else: 
         return "Fail"
 
 
-def pass_fail(condition_str,value):
+def pass_fail(value,condition_str):
     condition_str = str(condition_str)
-    if value == 'connector Programming Error' or value == 'Exception error' : 
+    if value == 'Query Does not exist' or value == 'Exception error' :
         return False
-    if condition_str.startswith(">"):
+    if value == '':
+        return False
+    if type(value) == str:
+        print(value)
+        return False
+    value = int(value)
+    if condition_str[0]=='>':
         threshold = float(condition_str[1:])
         if value > threshold:
             return True
@@ -252,11 +276,11 @@ def pass_fail(condition_str,value):
 def Sf_qry(qry):
         
     conn = snowflake.connector.connect(
-        user='RAGHAVAGARWALLA',
-        password='Dvcn8288--',
-        account='mg07208.central-india.azure',
+        user='CL1NARESH',
+        password='1SQLupload',
+        account='sg85113.central-india.azure',
         warehouse='COMPUTE_WH',
-        database='CLTEST',
+        database='CL_TEST',
         schema='PUBLIC'
     )
     cursor = conn.cursor()
@@ -265,10 +289,10 @@ def Sf_qry(qry):
         result = cursor.fetchone()[0]
         return result
     except snowflake.connector.ProgrammingError:
-        result = 'connector Programming Error'
+        result = 'Query Does not exist'
         return result
     except Exception: 
-        result = 'Exception error'
+        result = Exception
         return result
     finally:
         cursor.close()
@@ -298,10 +322,10 @@ def table1():
 
     for result_set, sql_qry, suite, batch, qrn_execn_status, sql_qry_1, sql_qry_2, expected_op in result_sets:
         suite_names.append(suite.suite_name)
-        run_dates.append(batch.batch_start_dt.strftime('%d-%b'))
+        run_dates.append(batch.batch_start_dt.strftime('%Y-%m-%d %H:%M:%S'))
         batch_ids.append(batch.batch_id)
         total_counts.append(1)
-        if qrn_execn_status == 'pass':
+        if qrn_execn_status == 'Pass':
             pass_counts.append(1)
             fail_counts.append(0)
         else:
@@ -325,8 +349,7 @@ def table1():
 
     grouped_df['Pass Percentage'] = (grouped_df['Pass Count'] / grouped_df['Total Count']) * 100
     grouped_df['Fail Percentage'] = (grouped_df['Fail Count'] / grouped_df['Total Count']) * 100
-
-    grouped_df = grouped_df.drop(columns=['rs_id', 'qry_id'], errors='ignore')
+    grouped_df = grouped_df.drop(columns=['rs_id', 'qry_id','Batch Id'], errors='ignore')
     grouped_df = grouped_df.iloc[::-1]
     table = grouped_df.to_json(orient="records")
     return jsonify({"data": table})
@@ -364,3 +387,61 @@ def table2():
     df = df.iloc[::-1]
     table = df.to_json(orient="records")
     return jsonify({"data": table}), 200
+
+@main.route('/addSuite', methods=['POST'])
+@cross_origin()
+def insert_suite():
+    data = request.get_json()
+    if not data or 'suite_name' not in data or 'suite_description' not in data or 'suite_created_by' not in data:
+        return jsonify({"error": "Invalid data"}), 400
+    suite_name = data['suite_name']
+    suite_description = data['suite_description']
+    suite_created_by = data['suite_created_by']
+ 
+    existing_suite = db.session.query(MdSuite).filter_by(suite_name=suite_name).first()
+    if existing_suite:
+        return jsonify({"error": "Suite with this name already exists"}), 400
+
+    # Get the maximum suite_id and increment by 1
+    max_suite_id = db.session.query(db.func.max(MdSuite.suite_id)).scalar()
+    new_suite_id = max_suite_id + 1 if max_suite_id else 1
+    # Create a new MdSuite instance with default values
+    new_suite = MdSuite(
+        suite_id= new_suite_id,
+        suite_name=suite_name,
+        suite_description=suite_description,
+        suite_created_by=suite_created_by,
+        suite_priority=None,
+        suite_created_dt=datetime.now(),
+        suite_modified_dt=None
+    )
+    db.session.add(new_suite)
+    try:
+        db.session.commit()
+        return jsonify({"success": True}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
+
+@main.route('/getSuite', methods=['GET'])
+@cross_origin()
+def get_suites():
+    try:
+        # Query all records from the MdSuite table
+        suites = MdSuite.query.all()
+        # Convert the records into a list of dictionaries
+        suite_list = [{
+            'suite_id': suite.suite_id,
+            'suite_name': suite.suite_name,
+            'suite_description':suite.suite_description,
+            'suite_created_by':suite.suite_created_by,
+            "suite_priority":suite.suite_priority,
+            'suite_created_dt': suite.suite_created_dt,
+            'suite_modified_dt': suite.suite_modified_dt
+        } for suite in suites]
+        # Return the list as a JSON response
+        suite_list.sort(key=lambda x: x['suite_id'], reverse=True)
+        return jsonify({"data": suite_list}), 200
+    except Exception as e:
+        # Handle any errors that occur during the query
+        return jsonify({"error": str(e)}), 500
