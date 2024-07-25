@@ -398,6 +398,7 @@ def table1():
     grouped_df['Pass Percentage'] = (grouped_df['Pass Count'] / grouped_df['Total Count']) * 100
     grouped_df['Fail Percentage'] = (grouped_df['Fail Count'] / grouped_df['Total Count']) * 100
     grouped_df = grouped_df.drop(columns=['rs_id', 'qry_id', 'Batch Id'], errors='ignore')
+    grouped_df = grouped_df.round(0)
     grouped_df = grouped_df.iloc[::-1]
     table = grouped_df.to_json(orient="records")
     return jsonify({"data": table})
@@ -539,6 +540,7 @@ def table3():
     grouped_df['Pass Percentage'] = (grouped_df['Pass Count'] / grouped_df['Total Count']) * 100
     grouped_df['Fail Percentage'] = (grouped_df['Fail Count'] / grouped_df['Total Count']) * 100
     grouped_df = grouped_df.drop(columns=['Batch Id'], errors='ignore')
+    grouped_df = grouped_df.round(0)
     grouped_df = grouped_df.iloc[::-1]
     table = grouped_df.to_json(orient="records")
     return jsonify({"data": table})
