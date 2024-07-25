@@ -86,18 +86,21 @@ def upload_data_pg1(df):
         sql_qry_1 = row['Query_1']
         sql_qry_2 = row['Query_2']
         suite_name = row['Suite_Name']
-        sql_qry1_db_id = row['Query_1_DB']
-        sql_qry2_db_id = row['Query_2_DB']
         qry_expected_op = row['Expected_Result']
 
-        print(qry_name, sql_qry_1, sql_qry_2, suite_name, sql_qry1_db_id, sql_qry2_db_id, qry_expected_op)
-
+        # Query the database to get the suite ID
         suite = MdSuite.query.filter_by(suite_name=suite_name).first()
+        suite_id = suite.suite_id if suite else None
 
-        if suite:
-            suite_id = suite.suite_id
-        else:
-            suite_id = None
+        # Query the database to get the database ID for Query_1_DB
+        db_1 = MdDatabase.query.filter_by(db_name=row['Query_1_DB']).first()
+        sql_qry1_db_id = db_1.db_id if db_1 else None
+
+        # Query the database to get the database ID for Query_2_DB
+        db_2 = MdDatabase.query.filter_by(db_name=row['Query_2_DB']).first()
+        sql_qry2_db_id = db_2.db_id if db_2 else None
+
+        print(qry_name, sql_qry_1, sql_qry_2, suite_name, sql_qry1_db_id, sql_qry2_db_id, qry_expected_op)
 
         existing_qry = MdSqlqry.query.filter_by(qry_name=qry_name).first()
 
@@ -105,6 +108,9 @@ def upload_data_pg1(df):
             existing_qry.sql_qry_1 = sql_qry_1
             existing_qry.sql_qry_2 = sql_qry_2
             existing_qry.suite_id = suite_id
+            existing_qry.sql_qry1_db_id = sql_qry1_db_id
+            existing_qry.sql_qry2_db_id = sql_qry2_db_id
+            existing_qry.qry_expected_op = qry_expected_op
             existing_qry.modified_dt = current_time
         else:
             new_qry = MdSqlqry(
