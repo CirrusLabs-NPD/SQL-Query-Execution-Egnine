@@ -1,5 +1,5 @@
 #!/bin/sh
-'''exec' "/Users/Raghav/Documents/Emory /Emory Srping Sem 2024/Internship/CirrusInsightsBE/myapp/bin/python3.12" "$0" "$@"
+'''exec' "/Users/Raghav/Documents/Emory /Emory Srping Sem 2024/Internship/SQL-Query-Execution-Egnine/Backend/myapp/bin/python3.12" "$0" "$@"
 ' '''
 # -*- coding: utf-8 -*-
 import re
