@@ -216,9 +216,8 @@ def pass_fail_create(row):
         condition_str = row['expected_result'].split(':')[1]
         pass_fail_status = pass_fail(result1, result2, condition_str)
     else:
-        result1_pf = pass_fail(result1, result1, row["expected_result"])
-        result2_pf = pass_fail(result2, result2, row["expected_result"])
-        pass_fail_status = result1_pf and result2_pf if row['sql_qry_2'] else result1_pf
+        result1_pf = pass_fail(result1, result2, row["expected_result"])
+        pass_fail_status = result1_pf
     
     return "Pass" if pass_fail_status else "Fail"
 
@@ -232,23 +231,25 @@ def pass_fail(value1, value2, condition_str):
         return compare_sample_rows(value1, value2)
     
     # Original comparison logic
-    if value1 in ['Query Does not exist', 'Exception error', ''] or value2 in ['Query Does not exist', 'Exception error', '']:
+    if value1 in ['Query Does not exist', 'Exception error', ''] or value2 in ['Query Does not exist', 'Exception error']:
         return False
     if isinstance(value1, str) or isinstance(value2, str):
         return False
+    if value2 == '':
+        value2 = value1
 
     value1 = int(value1)
     value2 = int(value2)
 
     if condition_str.startswith(">"):
         threshold = float(condition_str[1:])
-        return value1 > threshold
+        return value1 > threshold and value2 > threshold and value1 == value2
     elif condition_str.startswith("<"):
         threshold = float(condition_str[1:])
-        return value1 < threshold
+        return value1 < threshold and value2 < threshold and value1 == value2
     elif condition_str.startswith("=="):
         target = float(condition_str[2:])
-        return value1 == target
+        return value1 == target and value2 == target
     else:
         return False
 
