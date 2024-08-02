@@ -1,4 +1,4 @@
-from flask import Flask, Blueprint, jsonify, redirect, url_for, request, make_response, session
+from flask import Flask, Blueprint, jsonify, redirect, url_for, request, make_response, session, send_file
 from datetime import datetime, timedelta
 from .extensions import db
 from .models import MdDatabase, MdDbConfig, MdPrivs, MdResultSet, MdRole, MdSqlqry, MdSuite, User, QueryExecnBatch
@@ -15,6 +15,9 @@ import snowflake.connector
 from sqlalchemy import desc, func
 import mysql.connector
 import re
+import matplotlib.pyplot as plt
+import io
+import pandas as pd
 
 main = Blueprint('main', __name__)
 bcrypt = Bcrypt()
@@ -233,16 +236,17 @@ def pass_fail(value1, value2, condition_str):
     # Original comparison logic
     if value1 in ['Query Does not exist', 'Exception error', ''] or value2 in ['Query Does not exist', 'Exception error']:
         return False
-    if isinstance(value1, str) or isinstance(value2, str):
-        return False
     if value2 == '':
         value2 = value1
+    if isinstance(value1, str) or isinstance(value2, str):
+        return False
 
     value1 = int(value1)
     value2 = int(value2)
 
     if condition_str.startswith(">"):
         threshold = float(condition_str[1:])
+        print ("working till here")
         return value1 > threshold and value2 > threshold and value1 == value2
     elif condition_str.startswith("<"):
         threshold = float(condition_str[1:])
