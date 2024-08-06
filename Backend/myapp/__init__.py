@@ -10,7 +10,7 @@ from flask_jwt_extended import JWTManager
 def create_app():
     app = Flask(__name__)
 
-    app.config["SQLALCHEMY_DATABASE_URI"] = "postgresql://queryexecutionuser:tLZ0t9c3IiEyu1PaezvuhoN1LtPO3ukp@dpg-cq5rgro8fa8c738cbsjg-a.oregon-postgres.render.com/queryexecutiondb_qc81"
+    app.config["SQLALCHEMY_DATABASE_URI"] = "postgresql://queryexecnuser:IgdzvKDz6hA6V0bC9oQk1qdHlaFHEtfa@dpg-cqp2jg8gph6c73ffpu70-a.singapore-postgres.render.com/querydbnew"
     db.init_app(app)
 
     #Added Debug and Exception
