@@ -15,8 +15,7 @@ import snowflake.connector
 from sqlalchemy import desc, func
 import mysql.connector
 import re
-import matplotlib.pyplot as plt
-import io
+
 import pandas as pd
 
 main = Blueprint('main', __name__)
